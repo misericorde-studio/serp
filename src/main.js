@@ -128,6 +128,7 @@ function initToggleView() {
   const leftArrow = document.getElementById('left-arrow')
   const rightArrow = document.getElementById('right-arrow')
 
+  // Fonction pour basculer entre les vues
   function toggleView(showTerminal) {
     terminalView.classList.toggle('is-visible', showTerminal)
     snakeView.classList.toggle('is-visible', !showTerminal)
@@ -142,15 +143,17 @@ function initToggleView() {
     rightArrow.style.opacity = showTerminal ? '0.5' : '1'
   }
 
+  // Ajouter les événements au click
   terminalBtn.addEventListener('click', () => toggleView(true))
   snakeBtn.addEventListener('click', () => toggleView(false))
 
+  // Fonction pour ajouter un effet de survol sur les flèches
   function addHoverArrowEffect(btn, arrow) {
     btn.addEventListener('mouseenter', () => {
       if (!btn.classList.contains('is-active')) {
         arrow.style.opacity = '1'
         arrow.classList.remove('animate')
-        void arrow.offsetWidth
+        void arrow.offsetWidth // Cela force une reflow pour l'animation
         arrow.classList.add('animate')
       }
     })
@@ -176,6 +179,35 @@ function initToggleView() {
   )
 }
 
+// Initialiser le toggle au chargement
+initToggleView()
+
 // Appelle la fonction une fois le DOM prêt
 document.addEventListener('DOMContentLoaded', initToggleView)
 document.querySelector('.w-webflow-badge')?.remove()
+
+function addChevronToLines() {
+  document.querySelectorAll('.is-terminal-text').forEach((element) => {
+    // Récupérer le contenu HTML de chaque élément
+    let htmlContent = element.innerHTML
+
+    // Séparer le texte en lignes, en utilisant <br> comme délimiteur
+    const lines = htmlContent.split('<br>')
+
+    // Ajouter un ">" au début de chaque ligne tout en préservant les espaces
+    const formattedLines = lines.map((line) => {
+      // Trim les espaces avant et après, mais garde ceux avant le texte
+      const leadingSpaces = line.match(/^\s*/)[0] // récupère les espaces au début
+      const trimmedLine = line.trim() // enlève les espaces avant et après
+
+      // Ajouter le ">" tout en gardant les espaces
+      return `${leadingSpaces}&gt; ${trimmedLine}`
+    })
+
+    // Rejoindre les lignes formatées avec <br> pour créer le texte final
+    element.innerHTML = formattedLines.join('<br>')
+  })
+}
+
+// Appel de la fonction lorsque le DOM est chargé
+document.addEventListener('DOMContentLoaded', addChevronToLines)
