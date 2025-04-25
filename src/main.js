@@ -1,3 +1,5 @@
+import { gsap } from 'gsap'
+
 const input = document.getElementById('terminal-input')
 const terminal = document.querySelector('.terminal_inner')
 const sendButton = document.querySelector('.button')
@@ -377,3 +379,63 @@ function updateDataWithScramble() {
 }
 
 setInterval(updateDataWithScramble, 4000)
+
+// CRT
+document.addEventListener('DOMContentLoaded', () => {
+  // Récupérer ou créer le conteneur principal
+  const container = document.getElementById('crt-container')
+
+  // Créer l'élément .crt
+  const crt = document.createElement('div')
+  crt.classList.add('crt')
+
+  // Ajouter la div .crt dans le conteneur principal
+  container.appendChild(crt)
+
+  // Fonction pour créer les lignes
+  function createLines() {
+    // Supprimer toutes les lignes existantes
+    crt.innerHTML = ''
+
+    // Déterminer combien de lignes il faut en fonction de la hauteur du viewport
+    const linesCount = Math.floor(window.innerHeight / 4) // Ajuster 4 selon l'épaisseur des lignes
+
+    // Créer et ajouter les lignes .crt-line
+    for (let i = 0; i < linesCount; i++) {
+      const line = document.createElement('div')
+      line.classList.add('crt-line')
+      crt.appendChild(line)
+    }
+  }
+
+  // Appeler la fonction pour créer les lignes au chargement de la page
+  createLines()
+
+  // Réinitialiser les lignes à chaque redimensionnement de la fenêtre
+  window.addEventListener('resize', createLines)
+})
+
+document.addEventListener('DOMContentLoaded', function () {
+  const scanElement = document.querySelector('.scan')
+
+  // Définir les positions de départ et d'arrivée
+
+  // GSAP Animation
+  function animateScan() {
+    // Animer la div scan sur 3 secondes, puis attendre 4 secondes avant de recommencer
+    gsap.fromTo(
+      scanElement,
+      { y: '-7.375rem' }, // Position de départ
+      {
+        y: '110vh', // Durée de l'animation
+        duration: 3,
+        ease: 'linear', // Transition linéaire
+        repeat: -1, // Répéter indéfiniment
+        repeatDelay: 14, // Délai de 4 secondes entre chaque itération
+      }
+    )
+  }
+
+  // Lancer l'animation dès que la page est chargée
+  animateScan()
+})
