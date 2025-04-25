@@ -427,7 +427,14 @@ document.addEventListener('DOMContentLoaded', function () {
       scanElement,
       { y: '-7.375rem' }, // Position de départ
       {
-        y: '110vh', // Durée de l'animation
+        y: () => {
+          // Calcule la nouvelle position de 'y' en combinant 100vh et 7.375rem
+          const vh = window.innerHeight // Hauteur de la fenêtre en pixels
+          const rem = parseFloat(
+            getComputedStyle(document.documentElement).fontSize
+          ) // Taille de 1rem en pixels
+          return vh + 7.375 * rem // Ajoute 100vh + 7.375rem en pixels
+        }, // Durée de l'animation
         duration: 3,
         ease: 'linear', // Transition linéaire
         repeat: -1, // Répéter indéfiniment
@@ -438,4 +445,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Lancer l'animation dès que la page est chargée
   animateScan()
+})
+
+//Dropdown
+// Récupérer les éléments
+const dropdownButton = document.querySelector('.dropdown')
+const dropdownInner = document.querySelector('.dropdown-inner')
+const dropdownArrow = document.querySelector('.dropdown_arrow')
+
+// Ajouter un événement de clic au bouton dropdown
+dropdownButton.addEventListener('click', () => {
+  // Vérifier si dropdown-inner est actuellement visible
+  const isVisible = dropdownInner.style.display === 'flex'
+
+  if (isVisible) {
+    // Cacher le dropdown-inner et remettre l'arrow à 0deg
+    dropdownInner.style.display = 'none'
+    dropdownArrow.style.transform = 'rotate(0deg)'
+  } else {
+    // Afficher le dropdown-inner et faire pivoter l'arrow de 180deg
+    dropdownInner.style.display = 'flex'
+    dropdownArrow.style.transform = 'rotate(180deg)'
+  }
 })
