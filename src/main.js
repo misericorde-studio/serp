@@ -14,55 +14,59 @@ commandElements.forEach((el) => {
   }
 })
 
-/* global SplitType */
-/* eslint-disable no-unused-vars */
-const text = new SplitType('#target')
-/* eslint-enable no-unused-vars */
-// 2. Ajoute '>' au début des lignes déjà présentes
+// Chevrons sur target
 document.addEventListener('DOMContentLoaded', function () {
-  // Fonction pour appliquer SplitType et ajouter un chevron pour chaque ligne
-  function formatLines() {
+  function getRealLineCount(element) {
+    const clone = element.cloneNode(true)
+    const style = window.getComputedStyle(element)
+
+    // Appliquer les styles nécessaires pour la mesure
+    clone.style.position = 'absolute'
+    clone.style.visibility = 'hidden'
+    clone.style.height = 'auto'
+    clone.style.width = style.width
+    clone.style.whiteSpace = 'normal'
+    clone.style.padding = style.padding
+    clone.style.font = style.font
+    clone.style.letterSpacing = style.letterSpacing
+    clone.style.wordSpacing = style.wordSpacing
+    clone.style.lineHeight = style.lineHeight
+    clone.style.maxWidth = style.maxWidth
+
+    // Placer temporairement le clone dans le body pour mesurer
+    document.body.appendChild(clone)
+    const lineHeight = parseFloat(style.lineHeight)
+    const totalHeight = clone.getBoundingClientRect().height
+    const lineCount = Math.round(totalHeight / lineHeight)
+
+    document.body.removeChild(clone)
+    return lineCount
+  }
+
+  function updateChevrons() {
     const targetElement = document.querySelector('#target')
-
-    // Sauvegarder le contenu d'origine, mais cette fois en s'assurant que les sauts de ligne sont bien traduits en HTML
-    const originalText = targetElement.innerHTML
-
-    // Remplacer les retours à la ligne (nouvelles lignes) et les <br> par des marqueurs HTML compatibles
-    const textWithLineBreaks = originalText.replace(/(\r\n|\n|\r)/g, '<br>') // Remplacer les retours à la ligne par des balises <br>
-
-    // Mettre à jour le contenu de #target avec le texte formaté
-    targetElement.innerHTML = textWithLineBreaks
-
-    // Appliquer SplitType sur l'élément cible
-    new SplitType('#target') // Applique SplitType à l'élément avec l'ID "target"
-
-    // Sélectionner toutes les divs générées par SplitType (chaque ligne est un div)
-    const lines = document.querySelectorAll('#target .line')
-
-    // Sélectionner la div contenant les chevrons
     const chevronsContainer = document.querySelector('.chevrons')
 
-    // Réinitialiser le contenu de la div .chevrons à chaque mise à jour
+    if (!targetElement || !chevronsContainer) return
+
+    const lineCount = getRealLineCount(targetElement)
+
     chevronsContainer.innerHTML = ''
 
-    // Ajouter un chevron pour chaque ligne générée par SplitType
-    lines.forEach(() => {
+    for (let i = 0; i < lineCount; i++) {
       const chevronSpan = document.createElement('span')
       chevronSpan.classList.add('chevron')
       chevronSpan.innerHTML = '&gt;'
       chevronsContainer.appendChild(chevronSpan)
-    })
+    }
   }
 
-  // Applique le format initial après que la page soit chargée
-  formatLines()
+  updateChevrons()
 
-  // Surveiller les changements de taille de la fenêtre
   const resizeObserver = new ResizeObserver(() => {
-    formatLines() // Re-applique le format à chaque redimensionnement
+    updateChevrons()
   })
 
-  // Commencer l'observation sur l'élément .terminal_inner pour ajuster les lignes
   const terminalElement = document.querySelector('.terminal_inner')
   if (terminalElement) {
     resizeObserver.observe(terminalElement)
@@ -120,6 +124,7 @@ sendButton.addEventListener('click', function () {
   }
 })
 
+// Toggle
 function initToggleView() {
   const terminalBtn = document.getElementById('manifesto')
   const snakeBtn = document.getElementById('game')
@@ -184,7 +189,6 @@ initToggleView()
 
 // Appelle la fonction une fois le DOM prêt
 document.addEventListener('DOMContentLoaded', initToggleView)
-document.querySelector('.w-webflow-badge')?.remove()
 
 function addChevronToLines() {
   document.querySelectorAll('.is-terminal-text').forEach((element) => {
@@ -211,3 +215,165 @@ function addChevronToLines() {
 
 // Appel de la fonction lorsque le DOM est chargé
 document.addEventListener('DOMContentLoaded', addChevronToLines)
+
+// Scramble text
+function initScrambleOnHover(selector, options = {}) {
+  const {
+    speed = 150,
+    target = null, // Permet de définir une sous-cible, ex: '.label'
+  } = options
+
+  const chars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>?/[]{}'
+
+  document.querySelectorAll(selector).forEach((el) => {
+    const targetEl = target ? el.querySelector(target) : el
+    if (!targetEl) return
+
+    const finalText = targetEl.textContent
+
+    el.addEventListener('mouseenter', () => {
+      let output = ''
+      let revealed = 0
+
+      const scrambleInterval = setInterval(() => {
+        output = ''
+
+        for (let i = 0; i < finalText.length; i++) {
+          if (i < revealed) {
+            output += finalText[i]
+          } else {
+            output += chars.charAt(Math.floor(Math.random() * chars.length))
+          }
+        }
+
+        targetEl.textContent = output
+
+        if (revealed < finalText.length) {
+          revealed++
+        } else {
+          clearInterval(scrambleInterval)
+          targetEl.textContent = finalText
+        }
+      }, speed)
+    })
+  })
+}
+initScrambleOnHover('[data-scramble]', {
+  target: '.label', // Ne scramblera QUE le contenu texte de .label
+})
+
+//Scramble Data
+const dataConfig = {
+  '.is-rate': {
+    type: 'number',
+    min: 40,
+    max: 50,
+    suffix: '%',
+  },
+  '.is-souls': {
+    type: 'number',
+    min: 91,
+    max: 97,
+    range: true,
+    decimalPlaces: 3,
+    suffix: '',
+  },
+  '.is-entropy': {
+    type: 'number',
+    range: true,
+    min: -0.017,
+    max: +0.115,
+    suffix: 'Δ',
+    decimalPlaces: 3,
+  },
+  '.is-trust': {
+    type: 'text',
+    options: ['███%', '███%', '██%', '--'],
+  },
+  '.is-initiation': {
+    type: 'number',
+    min: 5,
+    max: 12,
+    suffix: 'await.',
+  },
+  '.is-neural': {
+    type: 'text',
+    options: ['High', 'Med.', 'Null', 'Max.', 'Lost', '--', '∞'],
+  },
+  '.is-origin': {
+    type: 'text',
+    options: ['@serp', '@v0id', '--', '@Ω421', '@Ω314'],
+  },
+  '.is-pulse': {
+    type: 'number',
+    min: 10.8,
+    max: 17.7,
+    suffix: 'HZ',
+  },
+  '.is-memory': {
+    type: 'number',
+    min: 18,
+    max: 71,
+    suffix: '% Mem',
+  },
+  '.is-cpu': {
+    type: 'number',
+    min: 21,
+    max: 82,
+    suffix: '% CPU',
+  },
+}
+
+function scrambleText(element, finalText, duration = 500) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789%.-'
+  let iterations = 0
+  const length = Math.max(finalText.length, element.textContent.length)
+
+  const interval = setInterval(() => {
+    const scrambled = finalText
+      .split('')
+      .map((char, i) => {
+        if (i < iterations) return finalText[i]
+        return chars[Math.floor(Math.random() * chars.length)]
+      })
+      .join('')
+    element.textContent = scrambled
+    iterations++
+    if (iterations >= length) {
+      clearInterval(interval)
+      element.textContent = finalText
+    }
+  }, duration / length)
+}
+
+function getRandomValue(config) {
+  if (config.type === 'number') {
+    if (config.range) {
+      const value = Math.random() * (config.max - config.min) + config.min
+      const formattedValue = value.toFixed(config.decimalPlaces || 3)
+      const signedValue = value >= 0 ? `+${formattedValue}` : formattedValue
+      return `${signedValue}${config.suffix || ''}` // Ajoute le suffixe (ex: Δ) sans espace
+    }
+
+    const value =
+      Math.floor(Math.random() * (config.max - config.min + 1)) + config.min
+    return `${value}${config.suffix || ''}`
+  } else if (config.type === 'text') {
+    return config.options[Math.floor(Math.random() * config.options.length)]
+  }
+
+  return ''
+}
+
+function updateDataWithScramble() {
+  Object.entries(dataConfig).forEach(([selector, config]) => {
+    const elements = document.querySelectorAll(selector)
+    elements.forEach((el) => {
+      const newValue = getRandomValue(config)
+      scrambleText(el, newValue)
+    })
+  })
+}
+
+setInterval(updateDataWithScramble, 4000)
