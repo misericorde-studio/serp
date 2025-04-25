@@ -85,25 +85,32 @@ document.querySelectorAll('.is-command').forEach((el) => {
 
 // 3. Fonction pour traiter une commande
 function processCommand(command) {
-  const typed = document.createElement('div')
+  const typed = document.createElement('span')
   typed.innerHTML = `&gt; ${command}`
   terminal.appendChild(typed)
-
-  const output = document.createElement('span')
-  output.classList.add('is-answer')
 
   const responseText = commands[command]
 
   if (responseText) {
     const lines = responseText.split('\n')
-    const formatted = lines.map((line) => `&gt; ${line}`).join('<br>')
-    output.innerHTML = formatted
+    lines.forEach((line, index) => {
+      setTimeout(() => {
+        const outputLine = document.createElement('span')
+        outputLine.classList.add('is-answer')
+        outputLine.innerHTML = `&gt; ${line}`
+        terminal.appendChild(outputLine)
+        terminal.scrollTop = terminal.scrollHeight
+      }, index * 100) // 100ms entre chaque ligne, ajustable
+    })
   } else {
-    output.innerHTML = `&gt; Command not found: "${command}"`
+    setTimeout(() => {
+      const output = document.createElement('span')
+      output.classList.add('is-answer')
+      output.innerHTML = `&gt; Command not found: "${command}"`
+      terminal.appendChild(output)
+      terminal.scrollTop = terminal.scrollHeight
+    }, 100)
   }
-
-  terminal.appendChild(output)
-  terminal.scrollTop = terminal.scrollHeight
 }
 
 // 4. Input clavier
@@ -467,4 +474,113 @@ dropdownButton.addEventListener('click', () => {
     dropdownInner.style.display = 'flex'
     dropdownArrow.style.transform = 'rotate(180deg)'
   }
+})
+
+// Game
+document.addEventListener('DOMContentLoaded', () => {
+  const gameContainer = document.querySelector('.game_inner')
+  const lostScreen = document.querySelector('.game_lost')
+  const restartBtn = document.getElementById('restart')
+
+  // Config
+  const gridSize = 20
+  const totalCells = gridSize * gridSize
+  const cells = []
+
+  let snake, direction, food, interval
+
+  // Grille
+  const grid = document.createElement('div')
+  grid.className = 'game-grid'
+  for (let i = 0; i < totalCells; i++) {
+    const cell = document.createElement('div')
+    cell.className = 'cell'
+    grid.appendChild(cell)
+    cells.push(cell)
+  }
+  gameContainer.appendChild(grid)
+
+  function draw() {
+    cells.forEach((cell) => (cell.className = 'cell'))
+    snake.forEach((i) => cells[i].classList.add('snake'))
+    if (food !== null) cells[food].classList.add('food')
+  }
+
+  function placeFood() {
+    let newFood
+    do {
+      newFood = Math.floor(Math.random() * totalCells)
+    } while (snake.includes(newFood))
+    food = newFood
+  }
+
+  function endGame() {
+    clearInterval(interval)
+    lostScreen.style.display = 'flex'
+  }
+
+  function move() {
+    let head = snake[0]
+    let next
+
+    if (direction === 1 && head % gridSize === gridSize - 1) {
+      next = head - (gridSize - 1)
+    } else if (direction === -1 && head % gridSize === 0) {
+      next = head + (gridSize - 1)
+    } else if (direction === -gridSize && head < gridSize) {
+      next = head + gridSize * (gridSize - 1)
+    } else if (direction === gridSize && head >= totalCells - gridSize) {
+      next = head - gridSize * (gridSize - 1)
+    } else {
+      next = head + direction
+    }
+
+    if (snake.includes(next)) {
+      endGame()
+      return
+    }
+
+    snake.unshift(next)
+
+    if (next === food) {
+      placeFood()
+    } else {
+      snake.pop()
+    }
+
+    draw()
+  }
+
+  document.addEventListener('keydown', (e) => {
+    switch (e.key) {
+      case 'ArrowUp':
+        if (direction !== gridSize) direction = -gridSize
+        break
+      case 'ArrowDown':
+        if (direction !== -gridSize) direction = gridSize
+        break
+      case 'ArrowLeft':
+        if (direction !== 1) direction = -1
+        break
+      case 'ArrowRight':
+        if (direction !== -1) direction = 1
+        break
+    }
+  })
+
+  function startGame() {
+    snake = [42, 41, 40]
+    direction = 1
+    placeFood()
+    draw()
+    lostScreen.style.display = 'none'
+    clearInterval(interval)
+    interval = setInterval(move, 150)
+  }
+
+  restartBtn.addEventListener('click', () => {
+    startGame()
+  })
+
+  startGame()
 })
