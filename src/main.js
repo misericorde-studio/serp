@@ -114,15 +114,17 @@ function processCommand(command) {
 }
 
 // 4. Input clavier
-input.addEventListener('keydown', function (e) {
-  if (e.key === 'Enter') {
-    const command = input.value.trim().toLowerCase()
-    if (command) {
-      processCommand(command)
-      input.value = ''
+if (input) {
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      const command = input.value.trim().toLowerCase()
+      if (command) {
+        processCommand(command)
+        input.value = ''
+      }
     }
-  }
-})
+  })
+}
 
 // 5. Bouton "Send"
 sendButton.addEventListener('click', function () {
@@ -142,7 +144,19 @@ function initToggleView() {
   const leftArrow = document.getElementById('left-arrow')
   const rightArrow = document.getElementById('right-arrow')
 
-  // Fonction pour basculer entre les vues
+  // Vérifie si tous les éléments nécessaires sont présents
+  if (
+    !terminalBtn ||
+    !snakeBtn ||
+    !terminalView ||
+    !snakeView ||
+    !leftArrow ||
+    !rightArrow
+  ) {
+    // Un des éléments n'existe pas, on arrête ici pour éviter les erreurs
+    return
+  }
+
   function toggleView(showTerminal) {
     terminalView.classList.toggle('is-visible', showTerminal)
     snakeView.classList.toggle('is-visible', !showTerminal)
@@ -157,17 +171,15 @@ function initToggleView() {
     rightArrow.style.opacity = showTerminal ? '0.5' : '1'
   }
 
-  // Ajouter les événements au click
   terminalBtn.addEventListener('click', () => toggleView(true))
   snakeBtn.addEventListener('click', () => toggleView(false))
 
-  // Fonction pour ajouter un effet de survol sur les flèches
   function addHoverArrowEffect(btn, arrow) {
     btn.addEventListener('mouseenter', () => {
       if (!btn.classList.contains('is-active')) {
         arrow.style.opacity = '1'
         arrow.classList.remove('animate')
-        void arrow.offsetWidth // Cela force une reflow pour l'animation
+        void arrow.offsetWidth
         arrow.classList.add('animate')
       }
     })
@@ -177,20 +189,14 @@ function initToggleView() {
         arrow.style.opacity = '0.5'
       }
     })
+
     arrow.addEventListener('animationend', () => {
       arrow.classList.remove('animate')
     })
   }
 
-  // Appelle la fonction pour chaque paire bouton/flèche
-  addHoverArrowEffect(
-    document.getElementById('manifesto'),
-    document.getElementById('left-arrow')
-  )
-  addHoverArrowEffect(
-    document.getElementById('game'),
-    document.getElementById('right-arrow')
-  )
+  addHoverArrowEffect(terminalBtn, leftArrow)
+  addHoverArrowEffect(snakeBtn, rightArrow)
 }
 
 // Initialiser le toggle au chargement
@@ -584,3 +590,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   startGame()
 })
+
+function moveHomeDependingOnScreen() {
+  const home = document.querySelector('.home')
+  const navWrapper = document.querySelector('.nav-wrapper')
+  const header = document.querySelector('.header')
+
+  if (!home || !navWrapper || !header) return
+
+  const mobileMediaQuery = window.matchMedia('(max-width: 768px)')
+
+  function handleScreenChange(e) {
+    if (e.matches) {
+      // On est en mobile
+      if (home.parentElement !== navWrapper) {
+        navWrapper.insertBefore(home, navWrapper.firstChild)
+      }
+    } else {
+      // On est en desktop
+      if (home.parentElement !== header) {
+        header.insertBefore(home, navWrapper)
+      }
+    }
+  }
+
+  // On initialise au chargement
+  handleScreenChange(mobileMediaQuery)
+
+  // On écoute les changements de taille d'écran
+  mobileMediaQuery.addEventListener('change', handleScreenChange)
+}
+
+window.addEventListener('DOMContentLoaded', moveHomeDependingOnScreen)
