@@ -22,6 +22,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const clone = element.cloneNode(true)
     const style = window.getComputedStyle(element)
 
+    // Récupérer la valeur réelle de la variable CSS pour la taille de la police (par exemple, '--font-size')
+    const fontSize = style.getPropertyValue('font-size')
+    const lineHeight = style.getPropertyValue('line-height') // Peut aussi être une variable CSS, vous pouvez la gérer ici si nécessaire.
+
     // Appliquer les styles nécessaires pour la mesure
     clone.style.position = 'absolute'
     clone.style.visibility = 'hidden'
@@ -29,19 +33,26 @@ document.addEventListener('DOMContentLoaded', function () {
     clone.style.width = style.width
     clone.style.whiteSpace = 'normal'
     clone.style.padding = style.padding
-    clone.style.font = style.font
+    clone.style.font = style.font // Le font appliqué au clone
     clone.style.letterSpacing = style.letterSpacing
     clone.style.wordSpacing = style.wordSpacing
-    clone.style.lineHeight = style.lineHeight
+    clone.style.lineHeight = lineHeight // Utilisation de la valeur récupérée
     clone.style.maxWidth = style.maxWidth
+
+    // Appliquer la taille de la police dynamique ou variable au clone
+    clone.style.fontSize = fontSize // La taille de la police récupérée avec la variable CSS
 
     // Placer temporairement le clone dans le body pour mesurer
     document.body.appendChild(clone)
-    const lineHeight = parseFloat(style.lineHeight)
-    const totalHeight = clone.getBoundingClientRect().height
-    const lineCount = Math.round(totalHeight / lineHeight)
 
+    // Calcul du nombre de lignes en utilisant la hauteur totale et la hauteur de ligne
+    const totalHeight = clone.getBoundingClientRect().height
+    const lineHeightNumeric = parseFloat(lineHeight)
+    const lineCount = Math.round(totalHeight / lineHeightNumeric)
+
+    // Nettoyer le clone
     document.body.removeChild(clone)
+
     return lineCount
   }
 
@@ -55,6 +66,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     chevronsContainer.innerHTML = ''
 
+    // Ajouter les chevrons en fonction du nombre de lignes
     for (let i = 0; i < lineCount; i++) {
       const chevronSpan = document.createElement('span')
       chevronSpan.classList.add('chevron')
@@ -63,8 +75,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // Mettre à jour les chevrons au chargement initial
   updateChevrons()
 
+  // Observer les changements de taille du terminal
   const resizeObserver = new ResizeObserver(() => {
     updateChevrons()
   })
@@ -598,7 +612,7 @@ function moveHomeDependingOnScreen() {
 
   if (!home || !navWrapper || !header) return
 
-  const mobileMediaQuery = window.matchMedia('(max-width: 768px)')
+  const mobileMediaQuery = window.matchMedia('(max-width: 991px)')
 
   function handleScreenChange(e) {
     if (e.matches) {
@@ -622,3 +636,43 @@ function moveHomeDependingOnScreen() {
 }
 
 window.addEventListener('DOMContentLoaded', moveHomeDependingOnScreen)
+
+gsap.registerPlugin() // Toujours une bonne pratique
+
+const timeline = gsap.timeline()
+
+const logos = ['.logo-2', '.logo-3', '.logo-4', '.logo-5', '.logo-6']
+
+const logs = document.querySelectorAll('.loader_log')
+const totalDuration = 3 // Durée totale 5s
+const durationPerLogo = totalDuration / logos.length
+const durationPerLog = totalDuration / logs.length
+
+// Faire apparaître les logos un par un
+logos.forEach((selector, index) => {
+  timeline.set(selector, { display: 'block' }, index * durationPerLogo)
+})
+
+// Faire apparaître les logs un par un
+logs.forEach((log, index) => {
+  timeline.set(log, { display: 'block' }, index * durationPerLog)
+})
+
+// Faire progresser le texte de 0% à 100%
+timeline.to(
+  '.progress-amount',
+  {
+    innerText: 100,
+    duration: totalDuration,
+    roundProps: 'innerText', // arrondi à l'entier
+    onUpdate: function () {
+      const progress = this.targets()[0].innerText
+      this.targets()[0].innerText = `[ ${progress}% ]`
+    },
+    ease: 'none', // pas d'accélération, progression linéaire
+  },
+  0
+) // Commencer dès le début de la timeline
+
+// À la fin → cacher le loader
+timeline.set('.loader', { display: 'none' }, totalDuration)
