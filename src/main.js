@@ -563,9 +563,18 @@ document.addEventListener('DOMContentLoaded', () => {
   gameContainer.appendChild(grid)
 
   function draw() {
-    cells.forEach((cell) => (cell.className = 'cell'))
+    cells.forEach((cell) => {
+      cell.className = 'cell'
+      cell.innerHTML = '' // Réinitialiser le contenu
+    })
+
     snake.forEach((i) => cells[i].classList.add('snake'))
-    if (food !== null) cells[food].classList.add('food')
+
+    if (food !== null) {
+      const foodCell = cells[food]
+      foodCell.classList.add('food')
+      foodCell.innerHTML = '$'
+    }
   }
 
   function placeFood() {
@@ -692,6 +701,8 @@ function startLoaderAnimation() {
   const timeline = gsap.timeline({
     onComplete: fadeOutLoaderElements,
   })
+
+  timeline.set('.loader', { display: 'flex' }, 0)
 
   // Assurer la visibilité initiale
   timeline.set(
