@@ -97,12 +97,50 @@ document.querySelectorAll('.is-command').forEach((el) => {
   }
 })
 
-// 3. Fonction pour traiter une commande
+//generer username
+function generateDefaultUsername() {
+  const randomDigits = Math.floor(10000 + Math.random() * 90000) // garantit 5 chiffres
+  return `anon${randomDigits}`
+}
+
+function updateWelcomeText() {
+  const welcomeElement = document.querySelector('.welcome')
+  if (welcomeElement) {
+    welcomeElement.textContent = `Welcome, ${storedUsername} !`
+  }
+}
+
+// traitement commandes
+let storedUsername = generateDefaultUsername()
+updateWelcomeText()
+
 function processCommand(command) {
   const typed = document.createElement('span')
+  typed.classList.add('is-answer')
   typed.innerHTML = `&gt; ${command}`
   terminal.appendChild(typed)
 
+  // Détection et stockage du nom personnalisé
+  if (command.toLowerCase().startsWith('user ')) {
+    const name = command.slice(5).trim()
+    if (name) {
+      storedUsername = name
+      const output = document.createElement('span')
+      output.classList.add('is-answer')
+      output.innerHTML = `&gt; Welcome, ${storedUsername} !`
+      terminal.appendChild(output)
+      terminal.scrollTop = terminal.scrollHeight
+    } else {
+      const output = document.createElement('span')
+      output.classList.add('is-answer')
+      output.innerHTML = `&gt; Veuillez entrer un nom après "user"`
+      terminal.appendChild(output)
+      terminal.scrollTop = terminal.scrollHeight
+    }
+    return
+  }
+
+  // Traitement des commandes standards avec injection de username
   const responseText = commands[command]
 
   if (responseText) {
@@ -111,10 +149,14 @@ function processCommand(command) {
       setTimeout(() => {
         const outputLine = document.createElement('span')
         outputLine.classList.add('is-answer')
-        outputLine.innerHTML = `&gt; ${line}`
+
+        // 🔁 Remplacement de [username] dans chaque ligne
+        const replacedLine = line.replace(/\[name\]/gi, storedUsername)
+
+        outputLine.innerHTML = `&gt; ${replacedLine}`
         terminal.appendChild(outputLine)
         terminal.scrollTop = terminal.scrollHeight
-      }, index * 100) // 100ms entre chaque ligne, ajustable
+      }, index * 100)
     })
   } else {
     setTimeout(() => {
@@ -637,42 +679,90 @@ function moveHomeDependingOnScreen() {
 
 window.addEventListener('DOMContentLoaded', moveHomeDependingOnScreen)
 
-gsap.registerPlugin() // Toujours une bonne pratique
+function startLoaderAnimation() {
+  gsap.registerPlugin()
 
-const timeline = gsap.timeline()
+  const logos = ['.logo-2', '.logo-3', '.logo-4', '.logo-5', '.logo-6']
+  const logs = document.querySelectorAll('.loader_log')
+  const bgItems = Array.from(document.querySelectorAll('.loader_bg-item'))
+  const totalDuration = 3
+  const durationPerLogo = 3 / logos.length
+  const durationPerLog = 3 / logs.length
 
-const logos = ['.logo-2', '.logo-3', '.logo-4', '.logo-5', '.logo-6']
+  const timeline = gsap.timeline({
+    onComplete: fadeOutLoaderElements,
+  })
 
-const logs = document.querySelectorAll('.loader_log')
-const totalDuration = 3 // Durée totale 5s
-const durationPerLogo = totalDuration / logos.length
-const durationPerLog = totalDuration / logs.length
+  // Assurer la visibilité initiale
+  timeline.set(
+    ['.loader_logos', '.loader_logs', '.loader_progress'],
+    { display: 'block', opacity: 1 },
+    0
+  )
 
-// Faire apparaître les logos un par un
-logos.forEach((selector, index) => {
-  timeline.set(selector, { display: 'block' }, index * durationPerLogo)
-})
+  // Logos un par un
+  logos.forEach((selector, index) => {
+    timeline.set(selector, { display: 'block' }, index * durationPerLogo)
+  })
 
-// Faire apparaître les logs un par un
-logs.forEach((log, index) => {
-  timeline.set(log, { display: 'block' }, index * durationPerLog)
-})
+  // Logs un par un
+  logs.forEach((log, index) => {
+    timeline.set(log, { display: 'block' }, index * durationPerLog)
+  })
 
-// Faire progresser le texte de 0% à 100%
-timeline.to(
-  '.progress-amount',
-  {
-    innerText: 100,
-    duration: totalDuration,
-    roundProps: 'innerText', // arrondi à l'entier
-    onUpdate: function () {
-      const progress = this.targets()[0].innerText
-      this.targets()[0].innerText = `[ ${progress}% ]`
+  // Progression du pourcentage
+  timeline.to(
+    '.progress-amount',
+    {
+      innerText: 100,
+      duration: totalDuration,
+      roundProps: 'innerText',
+      onUpdate: function () {
+        const progress = this.targets()[0].innerText
+        this.targets()[0].innerText = `[ ${progress}% ]`
+      },
+      ease: 'none',
     },
-    ease: 'none', // pas d'accélération, progression linéaire
-  },
-  0
-) // Commencer dès le début de la timeline
+    0
+  )
 
-// À la fin → cacher le loader
-timeline.set('.loader', { display: 'none' }, totalDuration)
+  // Étape suivante : fondre les éléments principaux
+  function fadeOutLoaderElements() {
+    gsap.to(['.loader_logos', '.loader_logs', '.loader_progress'], {
+      opacity: 0,
+      duration: 0.3,
+      onComplete: fadeOutBgItemsWave,
+    })
+  }
+
+  // Vagues instantanées de disparition
+  function fadeOutBgItemsWave() {
+    const firstBatch = getRandomSubset(bgItems, Math.ceil(bgItems.length * 0.3))
+    const remainingAfterFirst = bgItems.filter((i) => !firstBatch.includes(i))
+    const secondBatch = getRandomSubset(
+      remainingAfterFirst,
+      Math.ceil(bgItems.length * 0.3)
+    )
+    const finalBatch = remainingAfterFirst.filter(
+      (i) => !secondBatch.includes(i)
+    )
+
+    // Disparition instantanée, sans transition
+    gsap.set(firstBatch, { opacity: 0 })
+    gsap.delayedCall(0.3, () => {
+      gsap.set(secondBatch, { opacity: 0 })
+    })
+    gsap.delayedCall(0.5, () => {
+      gsap.set(finalBatch, { opacity: 0 })
+      // Masquer complètement le loader à la fin
+      gsap.set('.loader', { display: 'none' })
+    })
+  }
+
+  function getRandomSubset(array, count) {
+    const shuffled = array.slice().sort(() => 0.5 - Math.random())
+    return shuffled.slice(0, count)
+  }
+}
+
+startLoaderAnimation()
