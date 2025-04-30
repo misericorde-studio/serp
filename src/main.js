@@ -1,4 +1,9 @@
 import { gsap } from 'gsap'
+import { CustomEase } from 'gsap/CustomEase'
+
+gsap.registerPlugin(CustomEase)
+
+CustomEase.create('serpeasing', 'M0,0 C0.37,0.01 0.01,0.99 1,1')
 
 const input = document.getElementById('terminal-input')
 const terminal = document.querySelector('.terminal_inner')
@@ -484,37 +489,36 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', createLines)
 })
 
-document.addEventListener('DOMContentLoaded', function () {
-  const scanElement = document.querySelector('.scan')
+// document.addEventListener('DOMContentLoaded', function () {
+//   const scanElement = document.querySelector('.scan')
 
-  // Définir les positions de départ et d'arrivée
+//   // Définir les positions de départ et d'arrivée
 
-  // GSAP Animation
-  function animateScan() {
-    // Animer la div scan sur 3 secondes, puis attendre 4 secondes avant de recommencer
-    gsap.fromTo(
-      scanElement,
-      { y: '-7.375rem' }, // Position de départ
-      {
-        y: () => {
-          // Calcule la nouvelle position de 'y' en combinant 100vh et 7.375rem
-          const vh = window.innerHeight // Hauteur de la fenêtre en pixels
-          const rem = parseFloat(
-            getComputedStyle(document.documentElement).fontSize
-          ) // Taille de 1rem en pixels
-          return vh + 7.375 * rem // Ajoute 100vh + 7.375rem en pixels
-        }, // Durée de l'animation
-        duration: 3,
-        ease: 'linear', // Transition linéaire
-        repeat: -1, // Répéter indéfiniment
-        repeatDelay: 14, // Délai de 4 secondes entre chaque itération
-      }
-    )
-  }
+//   // GSAP Scan Animation
+//   function animateScan() {
+//     // Animer la div scan sur 3 secondes, puis attendre 4 secondes avant de recommencer
+//     gsap.fromTo(
+//       scanElement,
+//       { y: '-7.375rem' }, // Position de départ
+//       {
+//         y: () => {
+//           // Calcule la nouvelle position de 'y' en combinant 100vh et 7.375rem
+//           const vh = window.innerHeight // Hauteur de la fenêtre en pixels
+//           const rem = parseFloat(
+//             getComputedStyle(document.documentElement).fontSize
+//           ) // Taille de 1rem en pixels
+//           return vh + 7.375 * rem // Ajoute 100vh + 7.375rem en pixels
+//         }, // Durée de l'animation
+//         duration: 3,
+//         ease: 'linear', // Transition linéaire
+//         repeat: -1, // Répéter indéfiniment
+//         repeatDelay: 14, // Délai de 4 secondes entre chaque itération
+//       }
+//     )
+//   }
 
-  // Lancer l'animation dès que la page est chargée
-  animateScan()
-})
+//   animateScan()
+// })
 
 //Dropdown
 // Récupérer les éléments
@@ -688,42 +692,59 @@ function moveHomeDependingOnScreen() {
 
 window.addEventListener('DOMContentLoaded', moveHomeDependingOnScreen)
 
+// Loader
 function startLoaderAnimation() {
-  gsap.registerPlugin()
-
+  // Sélections DOM
+  const loader = document.querySelector('.loader')
+  const loaderWrap = document.querySelector('.loader-wrap')
+  const scan = document.querySelector('.scan.is-loader-1')
+  const progressAmount = document.querySelector('.progress-amount')
+  const loaderLogs = document.querySelectorAll('.loader_log')
+  const loaderSections = ['.loader_logos', '.loader_logs', '.loader_progress']
   const logos = ['.logo-2', '.logo-3', '.logo-4', '.logo-5', '.logo-6']
-  const logs = document.querySelectorAll('.loader_log')
-  const bgItems = Array.from(document.querySelectorAll('.loader_bg-item'))
-  const totalDuration = 3
-  const durationPerLogo = 3 / logos.length
-  const durationPerLog = 3 / logs.length
 
-  const timeline = gsap.timeline({
-    onComplete: fadeOutLoaderElements,
-  })
+  // Config
+  const totalDuration = 1.5
+  const durationPerLogo = totalDuration / logos.length
+  const durationPerLog = totalDuration / loaderLogs.length
 
-  timeline.set('.loader', { display: 'flex' }, 0)
+  const timeline = gsap.timeline()
 
-  // Assurer la visibilité initiale
+  document.body.style.overflow = 'hidden'
+
+  // Affiche .loader en flex au début
   timeline.set(
-    ['.loader_logos', '.loader_logs', '.loader_progress'],
-    { display: 'block', opacity: 1 },
+    loader,
+    {
+      display: 'flex',
+      height: '120svh',
+    },
     0
   )
 
-  // Logos un par un
+  // Affiche les sections internes
+  timeline.set(
+    loaderSections,
+    {
+      display: 'block',
+      opacity: 1,
+    },
+    0
+  )
+
+  // Logos apparaissent un par un
   logos.forEach((selector, index) => {
     timeline.set(selector, { display: 'block' }, index * durationPerLogo)
   })
 
-  // Logs un par un
-  logs.forEach((log, index) => {
+  // Logs apparaissent un par un
+  loaderLogs.forEach((log, index) => {
     timeline.set(log, { display: 'block' }, index * durationPerLog)
   })
 
-  // Progression du pourcentage
+  // Progression du texte de 0% à 100%
   timeline.to(
-    '.progress-amount',
+    progressAmount,
     {
       innerText: 100,
       duration: totalDuration,
@@ -737,43 +758,23 @@ function startLoaderAnimation() {
     0
   )
 
-  // Étape suivante : fondre les éléments principaux
-  function fadeOutLoaderElements() {
-    gsap.to(['.loader_logos', '.loader_logs', '.loader_progress'], {
-      opacity: 0,
-      duration: 0.3,
-      onComplete: fadeOutBgItemsWave,
-    })
-  }
+  // Animation du scan DÉCOUPLÉE
+  gsap.to(scan, {
+    y: '120svh',
+    duration: 2.2,
+    ease: 'serpeasing',
+  })
 
-  // Vagues instantanées de disparition
-  function fadeOutBgItemsWave() {
-    const firstBatch = getRandomSubset(bgItems, Math.ceil(bgItems.length * 0.3))
-    const remainingAfterFirst = bgItems.filter((i) => !firstBatch.includes(i))
-    const secondBatch = getRandomSubset(
-      remainingAfterFirst,
-      Math.ceil(bgItems.length * 0.3)
-    )
-    const finalBatch = remainingAfterFirst.filter(
-      (i) => !secondBatch.includes(i)
-    )
-
-    // Disparition instantanée, sans transition
-    gsap.set(firstBatch, { opacity: 0 })
-    gsap.delayedCall(0.3, () => {
-      gsap.set(secondBatch, { opacity: 0 })
-    })
-    gsap.delayedCall(0.5, () => {
-      gsap.set(finalBatch, { opacity: 0 })
-      // Masquer complètement le loader à la fin
-      gsap.set('.loader', { display: 'none' })
-    })
-  }
-
-  function getRandomSubset(array, count) {
-    const shuffled = array.slice().sort(() => 0.5 - Math.random())
-    return shuffled.slice(0, count)
-  }
+  // Réduction du loader
+  timeline.to(loaderWrap, {
+    height: 0,
+    duration: 1.8,
+    ease: 'serpeasing',
+    onComplete: () => {
+      document.body.style.overflow = ''
+      if (loader) loader.remove()
+    },
+  })
 }
 
 startLoaderAnimation()
