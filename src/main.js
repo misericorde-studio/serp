@@ -778,3 +778,168 @@ function startLoaderAnimation() {
 }
 
 startLoaderAnimation()
+
+// Create green square
+document.addEventListener('DOMContentLoaded', () => {
+  const greenSquare = document.createElement('div')
+  greenSquare.style.position = 'fixed'
+  greenSquare.style.width = '150px'
+  greenSquare.style.height = '40px'
+  greenSquare.style.backgroundColor = 'var(--base-colors--serp-red)'
+  greenSquare.style.zIndex = '999'
+  greenSquare.style.top = '0'
+  greenSquare.style.cursor = 'pointer'
+  greenSquare.style.display = 'flex'
+  greenSquare.style.justifyContent = 'center'
+  greenSquare.style.alignItems = 'center'
+  greenSquare.style.color = 'var(--base-colors--black)'
+  greenSquare.style.fontFamily = 'var(--font--main)'
+  greenSquare.style.fontSize = 'var(--text--s)'
+  greenSquare.style.textTransform = 'uppercase'
+  greenSquare.style.fontWeight = '500'
+  greenSquare.textContent = 'page transition'
+  document.body.appendChild(greenSquare)
+
+  const viewport = document.querySelector('.viewport')
+  const viewportLeft = document.querySelector('.viewport_left')
+  const viewportRight = document.querySelector('.viewport_right')
+  let isExpanded = false
+  let resizeHandler = null
+  let rightInitialWidthPx = null
+  let leftWidth = null
+
+  if (viewport) viewport.style.overflow = 'hidden'
+
+  greenSquare.addEventListener('click', () => {
+    if (!isExpanded) {
+      // Premier clic - Expansion
+
+      // Mémorise les largeurs initiales
+      leftWidth = viewportLeft.offsetWidth
+      rightInitialWidthPx = viewportRight.offsetWidth
+      const viewportWidth = viewport.offsetWidth
+      const style = getComputedStyle(viewport)
+      const paddingLeft = parseFloat(style.paddingLeft) || 0
+      const paddingRight = parseFloat(style.paddingRight) || 0
+      const targetWidth = viewportWidth - paddingLeft - paddingRight
+
+      // Animation d'expansion avec timeline
+      const tl = gsap.timeline({
+        onComplete: () => {
+          // À la fin de l'animation, on retire viewport_left du flux
+          // et on donne à viewport_right 100% de la largeur
+          viewportLeft.style.display = 'none'
+          viewportLeft.style.position = 'absolute' // Retire du flux
+          viewportLeft.style.visibility = 'hidden' // Masque complètement
+
+          // Ajuste la grille pour que viewport_right prenne toute la largeur
+          viewport.style.display = 'block' // Désactive la grille
+          viewportRight.style.width = '100%'
+          viewportRight.style.gridColumn = 'span 12' // Occupe toutes les colonnes
+          viewportRight.style.marginLeft = '0'
+
+          // On réinitialise la translation pour éviter des problèmes plus tard
+          gsap.set(viewportLeft, { x: 0 })
+        },
+      })
+
+      // Animer viewport_left hors de l'écran
+      tl.to(
+        viewportLeft,
+        {
+          x: `-${leftWidth}px`,
+          duration: 0.7,
+          ease: 'power2.inOut',
+        },
+        0
+      )
+
+      // Animer viewport_right pour qu'il prenne toute la largeur
+      tl.to(
+        viewportRight,
+        {
+          width: `${targetWidth}px`,
+          marginLeft: `-${leftWidth}px`,
+          duration: 0.7,
+          ease: 'power2.inOut',
+        },
+        0
+      )
+
+      // Ajoute un gestionnaire resize pour garder la largeur responsive
+      if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler)
+      }
+      resizeHandler = () => {
+        // En mode étendu, viewport_right prend simplement 100% de la largeur
+        viewportRight.style.width = '100%'
+      }
+      window.addEventListener('resize', resizeHandler)
+    } else {
+      // Deuxième clic - Réduction
+
+      // Préparation pour restaurer la disposition initiale
+      viewport.style.display = 'grid' // Restaure la disposition en grille
+      viewportLeft.style.position = '' // Restaure la position normale
+      viewportLeft.style.visibility = '' // Rend visible
+      viewportLeft.style.display = '' // Affiche à nouveau
+      viewportRight.style.gridColumn = '' // Restaure la disposition en colonnes
+
+      // On réaffiche d'abord viewport_left (positionné à sa place initiale)
+      viewportLeft.style.display = ''
+
+      // On prépare viewport_right pour l'animation
+      // On lui rend sa largeur expanded avant de commencer l'animation
+      const viewportWidth = viewport.offsetWidth
+      const style = getComputedStyle(viewport)
+      const paddingLeft = parseFloat(style.paddingLeft) || 0
+      const paddingRight = parseFloat(style.paddingRight) || 0
+      const expandedWidth = viewportWidth - paddingLeft - paddingRight
+
+      // On remet viewport_right dans l'état étendu avant l'animation
+      viewportRight.style.width = `${expandedWidth}px`
+      viewportRight.style.marginLeft = `-${leftWidth}px`
+
+      // On place viewport_left hors écran pour commencer l'animation
+      gsap.set(viewportLeft, { x: `-${leftWidth}px` })
+
+      // Timeline pour l'animation de retour
+      const tl = gsap.timeline({
+        onComplete: () => {
+          // Nettoyage des styles inline une fois l'animation terminée
+          viewportRight.style.width = ''
+          viewportRight.style.marginLeft = ''
+        },
+      })
+
+      // Animation synchronisée pour le retour
+      tl.to(
+        viewportLeft,
+        {
+          x: 0,
+          duration: 0.7,
+          ease: 'power2.inOut',
+        },
+        0
+      )
+
+      tl.to(
+        viewportRight,
+        {
+          width: `${rightInitialWidthPx}px`,
+          marginLeft: 0,
+          duration: 0.7,
+          ease: 'power2.inOut',
+        },
+        0
+      )
+
+      // Retire le gestionnaire resize
+      if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler)
+        resizeHandler = null
+      }
+    }
+    isExpanded = !isExpanded
+  })
+})
