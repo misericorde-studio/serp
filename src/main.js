@@ -22,6 +22,8 @@ commandElements.forEach((el) => {
 })
 
 // Chevrons sur target
+let globalUpdateChevrons // Variable pour stocker la fonction updateChevrons
+
 document.addEventListener('DOMContentLoaded', function () {
   function getRealLineCount(element) {
     const clone = element.cloneNode(true)
@@ -79,6 +81,9 @@ document.addEventListener('DOMContentLoaded', function () {
       chevronsContainer.appendChild(chevronSpan)
     }
   }
+
+  // Stocker la référence globalement
+  globalUpdateChevrons = updateChevrons
 
   // Mettre à jour les chevrons au chargement initial
   updateChevrons()
@@ -204,6 +209,11 @@ function initToggleView() {
   const snakeView = document.getElementById('game-view')
   const leftArrow = document.getElementById('left-arrow')
   const rightArrow = document.getElementById('right-arrow')
+  const viewportRight = document.querySelector('.viewport_right')
+  const viewportRightInner = document.querySelector('.viewport_right-inner')
+  const contentWrapper = document.querySelector('.content-wrapper')
+  const viewContainer = document.querySelector('.view-container')
+  const gameInner = document.querySelector('.game_inner')
 
   // Vérifie si tous les éléments nécessaires sont présents
   if (
@@ -212,9 +222,13 @@ function initToggleView() {
     !terminalView ||
     !snakeView ||
     !leftArrow ||
-    !rightArrow
+    !rightArrow ||
+    !viewportRight ||
+    !viewportRightInner ||
+    !contentWrapper ||
+    !viewContainer ||
+    !gameInner
   ) {
-    // Un des éléments n'existe pas, on arrête ici pour éviter les erreurs
     return
   }
 
@@ -230,6 +244,53 @@ function initToggleView() {
 
     leftArrow.style.opacity = showTerminal ? '1' : '0.5'
     rightArrow.style.opacity = showTerminal ? '0.5' : '1'
+
+    // Ajuster les styles pour le mode jeu
+    if (showTerminal) {
+      // Retour aux valeurs CSS par défaut
+      viewportRight.style.cssText = ''
+      viewportRightInner.style.cssText = ''
+      contentWrapper.style.cssText = ''
+      viewContainer.style.cssText = ''
+      gameInner.style.cssText = ''
+    } else {
+      // Configuration pour le jeu avec une gestion stricte des hauteurs
+      viewportRight.style.cssText = `
+        height: 100vh;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      `
+      viewportRightInner.style.cssText = `
+        height: 100%;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      `
+      contentWrapper.style.cssText = `
+        height: 100%;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      `
+      viewContainer.style.cssText = `
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      `
+      gameInner.style.cssText = `
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        position: relative;
+        overflow: hidden;
+      `
+    }
   }
 
   terminalBtn.addEventListener('click', () => toggleView(true))
@@ -258,6 +319,45 @@ function initToggleView() {
 
   addHoverArrowEffect(terminalBtn, leftArrow)
   addHoverArrowEffect(snakeBtn, rightArrow)
+
+  // S'assurer que les styles sont corrects au chargement initial
+  if (snakeView.classList.contains('is-visible')) {
+    viewportRight.style.cssText = `
+      height: 100vh;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `
+    viewportRightInner.style.cssText = `
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `
+    contentWrapper.style.cssText = `
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `
+    viewContainer.style.cssText = `
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `
+    gameInner.style.cssText = `
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    `
+  }
 }
 
 // Initialiser le toggle au chargement
@@ -266,7 +366,8 @@ initToggleView()
 // Appelle la fonction une fois le DOM prêt
 document.addEventListener('DOMContentLoaded', initToggleView)
 
-function addChevronToLines() {
+// Fonction pour s'assurer que tous les éléments .is-terminal-text ont des chevrons
+function ensureTerminalChevrons() {
   document.querySelectorAll('.is-terminal-text').forEach((element) => {
     // Récupérer le contenu HTML de chaque élément
     let htmlContent = element.innerHTML
@@ -274,8 +375,14 @@ function addChevronToLines() {
     // Séparer le texte en lignes, en utilisant <br> comme délimiteur
     const lines = htmlContent.split('<br>')
 
-    // Ajouter un ">" au début de chaque ligne tout en préservant les espaces
-    const formattedLines = lines.map((line) => {
+    // Nettoyer d'abord toutes les lignes en retirant les chevrons existants
+    const cleanedLines = lines.map((line) => {
+      // Supprimer le chevron s'il existe
+      return line.replace(/&gt;\s*/, '')
+    })
+
+    // Ajouter un chevron au début de chaque ligne
+    const formattedLines = cleanedLines.map((line) => {
       // Trim les espaces avant et après, mais garde ceux avant le texte
       const leadingSpaces = line.match(/^\s*/)[0] // récupère les espaces au début
       const trimmedLine = line.trim() // enlève les espaces avant et après
@@ -289,8 +396,8 @@ function addChevronToLines() {
   })
 }
 
-// Appel de la fonction lorsque le DOM est chargé
-document.addEventListener('DOMContentLoaded', addChevronToLines)
+// Appeler la fonction au chargement de la page pour s'assurer que les chevrons sont présents
+document.addEventListener('DOMContentLoaded', ensureTerminalChevrons)
 
 // Scramble text
 function initScrambleOnHover(selector, options = {}) {
@@ -710,7 +817,7 @@ function startLoaderAnimation() {
 
   const timeline = gsap.timeline()
 
-  document.body.style.overflow = 'hidden'
+  // document.body.style.overflow = 'hidden'
 
   // Affiche .loader en flex au début
   timeline.set(
@@ -800,146 +907,94 @@ document.addEventListener('DOMContentLoaded', () => {
   greenSquare.textContent = 'page transition'
   document.body.appendChild(greenSquare)
 
-  const viewport = document.querySelector('.viewport')
+  // Sélection des éléments nécessaires
   const viewportLeft = document.querySelector('.viewport_left')
   const viewportRight = document.querySelector('.viewport_right')
   let isExpanded = false
-  let resizeHandler = null
-  let rightInitialWidthPx = null
-  let leftWidth = null
 
-  if (viewport) viewport.style.overflow = 'hidden'
+  // Fonction pour déterminer si on est en mode mobile/tablette
+  function isMobileOrTablet() {
+    return window.matchMedia('(max-width: 991px)').matches
+  }
 
-  greenSquare.addEventListener('click', () => {
-    if (!isExpanded) {
-      // Premier clic - Expansion
+  // Fonction pour obtenir la largeur de base selon la taille d'écran
+  function getBaseWidth() {
+    return window.matchMedia('(min-width: 1440px)').matches ? '60vw' : '70vw'
+  }
 
-      // Mémorise les largeurs initiales
-      leftWidth = viewportLeft.offsetWidth
-      rightInitialWidthPx = viewportRight.offsetWidth
-      const viewportWidth = viewport.offsetWidth
-      const style = getComputedStyle(viewport)
-      const paddingLeft = parseFloat(style.paddingLeft) || 0
-      const paddingRight = parseFloat(style.paddingRight) || 0
-      const targetWidth = viewportWidth - paddingLeft - paddingRight
-
-      // Animation d'expansion avec timeline
-      const tl = gsap.timeline({
-        onComplete: () => {
-          // À la fin de l'animation, on retire viewport_left du flux
-          // et on donne à viewport_right 100% de la largeur
-          viewportLeft.style.display = 'none'
-          viewportLeft.style.position = 'absolute' // Retire du flux
-          viewportLeft.style.visibility = 'hidden' // Masque complètement
-
-          // Ajuste la grille pour que viewport_right prenne toute la largeur
-          viewport.style.display = 'block' // Désactive la grille
-          viewportRight.style.width = '100%'
-          viewportRight.style.gridColumn = 'span 12' // Occupe toutes les colonnes
-          viewportRight.style.marginLeft = '0'
-
-          // On réinitialise la translation pour éviter des problèmes plus tard
-          gsap.set(viewportLeft, { x: 0 })
-        },
-      })
-
-      // Animer viewport_left hors de l'écran
-      tl.to(
-        viewportLeft,
-        {
-          x: `-${leftWidth}px`,
-          duration: 0.7,
-          ease: 'power2.inOut',
-        },
-        0
-      )
-
-      // Animer viewport_right pour qu'il prenne toute la largeur
-      tl.to(
-        viewportRight,
-        {
-          width: `${targetWidth}px`,
-          marginLeft: `-${leftWidth}px`,
-          duration: 0.7,
-          ease: 'power2.inOut',
-        },
-        0
-      )
-
-      // Ajoute un gestionnaire resize pour garder la largeur responsive
-      if (resizeHandler) {
-        window.removeEventListener('resize', resizeHandler)
-      }
-      resizeHandler = () => {
-        // En mode étendu, viewport_right prend simplement 100% de la largeur
-        viewportRight.style.width = '100%'
-      }
-      window.addEventListener('resize', resizeHandler)
+  // Fonction pour mettre à jour la largeur en fonction de l'état
+  function updateWidth() {
+    if (isMobileOrTablet()) {
+      viewportRight.style.width = '100%'
+      viewportLeft.style.display = isExpanded ? 'none' : ''
     } else {
-      // Deuxième clic - Réduction
-
-      // Préparation pour restaurer la disposition initiale
-      viewport.style.display = 'grid' // Restaure la disposition en grille
-      viewportLeft.style.position = '' // Restaure la position normale
-      viewportLeft.style.visibility = '' // Rend visible
-      viewportLeft.style.display = '' // Affiche à nouveau
-      viewportRight.style.gridColumn = '' // Restaure la disposition en colonnes
-
-      // On réaffiche d'abord viewport_left (positionné à sa place initiale)
-      viewportLeft.style.display = ''
-
-      // On prépare viewport_right pour l'animation
-      // On lui rend sa largeur expanded avant de commencer l'animation
-      const viewportWidth = viewport.offsetWidth
-      const style = getComputedStyle(viewport)
-      const paddingLeft = parseFloat(style.paddingLeft) || 0
-      const paddingRight = parseFloat(style.paddingRight) || 0
-      const expandedWidth = viewportWidth - paddingLeft - paddingRight
-
-      // On remet viewport_right dans l'état étendu avant l'animation
-      viewportRight.style.width = `${expandedWidth}px`
-      viewportRight.style.marginLeft = `-${leftWidth}px`
-
-      // On place viewport_left hors écran pour commencer l'animation
-      gsap.set(viewportLeft, { x: `-${leftWidth}px` })
-
-      // Timeline pour l'animation de retour
-      const tl = gsap.timeline({
-        onComplete: () => {
-          // Nettoyage des styles inline une fois l'animation terminée
-          viewportRight.style.width = ''
-          viewportRight.style.marginLeft = ''
-        },
-      })
-
-      // Animation synchronisée pour le retour
-      tl.to(
-        viewportLeft,
-        {
-          x: 0,
-          duration: 0.7,
-          ease: 'power2.inOut',
-        },
-        0
-      )
-
-      tl.to(
-        viewportRight,
-        {
-          width: `${rightInitialWidthPx}px`,
-          marginLeft: 0,
-          duration: 0.7,
-          ease: 'power2.inOut',
-        },
-        0
-      )
-
-      // Retire le gestionnaire resize
-      if (resizeHandler) {
-        window.removeEventListener('resize', resizeHandler)
-        resizeHandler = null
+      if (isExpanded) {
+        viewportRight.style.width = '100vw'
+        viewportLeft.style.display = 'none'
+      } else {
+        viewportRight.style.width = getBaseWidth()
+        viewportLeft.style.display = ''
       }
     }
+  }
+
+  // Écouteur pour le redimensionnement
+  window.addEventListener('resize', updateWidth)
+
+  // Animation uniquement sur viewportRight, avec timing précis pour viewportLeft
+  greenSquare.addEventListener('click', () => {
+    const commonEasing = 'power2.inOut'
+    const duration = 0.7
+
+    if (!isExpanded) {
+      // Si on est sur mobile/tablette, on ne fait pas l'animation
+      if (isMobileOrTablet()) {
+        viewportLeft.style.display = 'none'
+        viewportRight.style.width = '100%'
+        isExpanded = !isExpanded
+        return
+      }
+
+      // Animation de viewport_right vers 100vw
+      gsap.to(viewportRight, {
+        width: '100vw',
+        duration: duration,
+        ease: commonEasing,
+        onComplete: function () {
+          viewportLeft.style.display = 'none'
+        },
+      })
+    } else {
+      // Si on est sur mobile/tablette, on restaure simplement l'affichage
+      if (isMobileOrTablet()) {
+        viewportLeft.style.display = ''
+        viewportRight.style.width = '100%'
+        isExpanded = !isExpanded
+        return
+      }
+
+      // Réafficher viewport_left avant l'animation
+      viewportLeft.style.display = ''
+
+      // Animation de viewport_right vers sa taille initiale
+      gsap.to(viewportRight, {
+        width: getBaseWidth(),
+        duration: duration,
+        ease: commonEasing,
+        onComplete: function () {
+          // Mettre à jour les chevrons
+          ensureTerminalChevrons()
+          if (globalUpdateChevrons) {
+            globalUpdateChevrons()
+          }
+        },
+      })
+    }
+
     isExpanded = !isExpanded
   })
+
+  // Supprimer tout CSS superflu
+  const oldStyles = document.querySelectorAll('style[data-page-transition]')
+  oldStyles.forEach((style) => style.remove())
 })
