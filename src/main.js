@@ -1,3 +1,4 @@
+import barba from '@barba/core'
 import { gsap } from 'gsap'
 import { CustomEase } from 'gsap/CustomEase'
 
@@ -5,448 +6,11 @@ gsap.registerPlugin(CustomEase)
 
 CustomEase.create('serpeasing', 'M0,0 C0.37,0.01 0.01,0.99 1,1')
 
-const input = document.getElementById('terminal-input')
-const terminal = document.querySelector('.terminal_inner')
-const sendButton = document.querySelector('.button')
-
-// 1. Récupère les commandes depuis le DOM
-const commandElements = document.querySelectorAll('.commands_item')
-const commands = {}
-
-commandElements.forEach((el) => {
-  const name = el.getAttribute('data-command')
-  const response = el.getAttribute('data-response')
-  if (name && response) {
-    commands[name.toLowerCase()] = response
-  }
-})
-
-// Chevrons sur target
-let globalUpdateChevrons // Variable pour stocker la fonction updateChevrons
-
-document.addEventListener('DOMContentLoaded', function () {
-  function getRealLineCount(element) {
-    const clone = element.cloneNode(true)
-    const style = window.getComputedStyle(element)
-
-    // Récupérer la valeur réelle de la variable CSS pour la taille de la police (par exemple, '--font-size')
-    const fontSize = style.getPropertyValue('font-size')
-    const lineHeight = style.getPropertyValue('line-height') // Peut aussi être une variable CSS, vous pouvez la gérer ici si nécessaire.
-
-    // Appliquer les styles nécessaires pour la mesure
-    clone.style.position = 'absolute'
-    clone.style.visibility = 'hidden'
-    clone.style.height = 'auto'
-    clone.style.width = style.width
-    clone.style.whiteSpace = 'normal'
-    clone.style.padding = style.padding
-    clone.style.font = style.font // Le font appliqué au clone
-    clone.style.letterSpacing = style.letterSpacing
-    clone.style.wordSpacing = style.wordSpacing
-    clone.style.lineHeight = lineHeight // Utilisation de la valeur récupérée
-    clone.style.maxWidth = style.maxWidth
-
-    // Appliquer la taille de la police dynamique ou variable au clone
-    clone.style.fontSize = fontSize // La taille de la police récupérée avec la variable CSS
-
-    // Placer temporairement le clone dans le body pour mesurer
-    document.body.appendChild(clone)
-
-    // Calcul du nombre de lignes en utilisant la hauteur totale et la hauteur de ligne
-    const totalHeight = clone.getBoundingClientRect().height
-    const lineHeightNumeric = parseFloat(lineHeight)
-    const lineCount = Math.round(totalHeight / lineHeightNumeric)
-
-    // Nettoyer le clone
-    document.body.removeChild(clone)
-
-    return lineCount
-  }
-
-  function updateChevrons() {
-    const targetElement = document.querySelector('#target')
-    const chevronsContainer = document.querySelector('.chevrons')
-
-    if (!targetElement || !chevronsContainer) return
-
-    const lineCount = getRealLineCount(targetElement)
-
-    chevronsContainer.innerHTML = ''
-
-    // Ajouter les chevrons en fonction du nombre de lignes
-    for (let i = 0; i < lineCount; i++) {
-      const chevronSpan = document.createElement('span')
-      chevronSpan.classList.add('chevron')
-      chevronSpan.innerHTML = '&gt;'
-      chevronsContainer.appendChild(chevronSpan)
-    }
-  }
-
-  // Stocker la référence globalement
-  globalUpdateChevrons = updateChevrons
-
-  // Mettre à jour les chevrons au chargement initial
-  updateChevrons()
-
-  // Observer les changements de taille du terminal
-  const resizeObserver = new ResizeObserver(() => {
-    updateChevrons()
-  })
-
-  const terminalElement = document.querySelector('.terminal_inner')
-  if (terminalElement) {
-    resizeObserver.observe(terminalElement)
-  }
-})
-
-// Préfixer chaque .is-command
-document.querySelectorAll('.is-command').forEach((el) => {
-  const trimmed = el.textContent.trim()
-  if (!trimmed.startsWith('>')) {
-    el.textContent = `> ${trimmed}`
-  }
-})
-
-//generer username
-function generateDefaultUsername() {
-  const randomDigits = Math.floor(10000 + Math.random() * 90000) // garantit 5 chiffres
-  return `anon${randomDigits}`
-}
-
-function updateWelcomeText() {
-  const welcomeElement = document.querySelector('.welcome')
-  if (welcomeElement) {
-    welcomeElement.textContent = `Welcome, ${storedUsername} !`
-  }
-}
-
-// traitement commandes
-let storedUsername = generateDefaultUsername()
-updateWelcomeText()
-
-function processCommand(command) {
-  const typed = document.createElement('span')
-  typed.classList.add('is-answer')
-  typed.innerHTML = `&gt; ${command}`
-  terminal.appendChild(typed)
-
-  // Détection et stockage du nom personnalisé
-  if (command.toLowerCase().startsWith('user ')) {
-    const name = command.slice(5).trim()
-    if (name) {
-      storedUsername = name
-      const output = document.createElement('span')
-      output.classList.add('is-answer')
-      output.innerHTML = `&gt; Welcome, ${storedUsername} !`
-      terminal.appendChild(output)
-      terminal.scrollTop = terminal.scrollHeight
-    } else {
-      const output = document.createElement('span')
-      output.classList.add('is-answer')
-      output.innerHTML = `&gt; Veuillez entrer un nom après "user"`
-      terminal.appendChild(output)
-      terminal.scrollTop = terminal.scrollHeight
-    }
-    return
-  }
-
-  // Traitement des commandes standards avec injection de username
-  const responseText = commands[command]
-
-  if (responseText) {
-    const lines = responseText.split('\n')
-    lines.forEach((line, index) => {
-      setTimeout(() => {
-        const outputLine = document.createElement('span')
-        outputLine.classList.add('is-answer')
-
-        // 🔁 Remplacement de [username] dans chaque ligne
-        const replacedLine = line.replace(/\[name\]/gi, storedUsername)
-
-        outputLine.innerHTML = `&gt; ${replacedLine}`
-        terminal.appendChild(outputLine)
-        terminal.scrollTop = terminal.scrollHeight
-      }, index * 100)
-    })
-  } else {
-    setTimeout(() => {
-      const output = document.createElement('span')
-      output.classList.add('is-answer')
-      output.innerHTML = `&gt; Command not found: "${command}"`
-      terminal.appendChild(output)
-      terminal.scrollTop = terminal.scrollHeight
-    }, 100)
-  }
-}
-
-// 4. Input clavier
-if (input) {
-  input.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      const command = input.value.trim().toLowerCase()
-      if (command) {
-        processCommand(command)
-        input.value = ''
-      }
-    }
-  })
-}
-
-// 5. Bouton "Send"
-sendButton.addEventListener('click', function () {
-  const command = input.value.trim().toLowerCase()
-  if (command) {
-    processCommand(command)
-    input.value = ''
-  }
-})
-
-// Toggle
-function initToggleView() {
-  const terminalBtn = document.getElementById('manifesto')
-  const snakeBtn = document.getElementById('game')
-  const terminalView = document.getElementById('manifesto-view')
-  const snakeView = document.getElementById('game-view')
-  const leftArrow = document.getElementById('left-arrow')
-  const rightArrow = document.getElementById('right-arrow')
-  const viewportRight = document.querySelector('.viewport_right')
-  const viewportRightInner = document.querySelector('.viewport_right-inner')
-  const contentWrapper = document.querySelector('.content-wrapper')
-  const viewContainer = document.querySelector('.view-container')
-  const gameInner = document.querySelector('.game_inner')
-
-  // Vérifie si tous les éléments nécessaires sont présents
-  if (
-    !terminalBtn ||
-    !snakeBtn ||
-    !terminalView ||
-    !snakeView ||
-    !leftArrow ||
-    !rightArrow ||
-    !viewportRight ||
-    !viewportRightInner ||
-    !contentWrapper ||
-    !viewContainer ||
-    !gameInner
-  ) {
-    return
-  }
-
-  function toggleView(showTerminal) {
-    terminalView.classList.toggle('is-visible', showTerminal)
-    snakeView.classList.toggle('is-visible', !showTerminal)
-
-    terminalBtn.classList.toggle('is-active', showTerminal)
-    snakeBtn.classList.toggle('is-active', !showTerminal)
-
-    leftArrow.classList.toggle('is-active', showTerminal)
-    rightArrow.classList.toggle('is-active', !showTerminal)
-
-    leftArrow.style.opacity = showTerminal ? '1' : '0.5'
-    rightArrow.style.opacity = showTerminal ? '0.5' : '1'
-
-    // Ajuster les styles pour le mode jeu
-    if (showTerminal) {
-      // Retour aux valeurs CSS par défaut
-      viewportRight.style.cssText = ''
-      viewportRightInner.style.cssText = ''
-      contentWrapper.style.cssText = ''
-      viewContainer.style.cssText = ''
-      gameInner.style.cssText = ''
-    } else {
-      // Configuration pour le jeu avec une gestion stricte des hauteurs
-      viewportRight.style.cssText = `
-        height: 100vh;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      `
-      viewportRightInner.style.cssText = `
-        height: 100%;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      `
-      contentWrapper.style.cssText = `
-        height: 100%;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      `
-      viewContainer.style.cssText = `
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      `
-      gameInner.style.cssText = `
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        position: relative;
-        overflow: hidden;
-      `
-    }
-  }
-
-  terminalBtn.addEventListener('click', () => toggleView(true))
-  snakeBtn.addEventListener('click', () => toggleView(false))
-
-  function addHoverArrowEffect(btn, arrow) {
-    btn.addEventListener('mouseenter', () => {
-      if (!btn.classList.contains('is-active')) {
-        arrow.style.opacity = '1'
-        arrow.classList.remove('animate')
-        void arrow.offsetWidth
-        arrow.classList.add('animate')
-      }
-    })
-
-    btn.addEventListener('mouseleave', () => {
-      if (!btn.classList.contains('is-active')) {
-        arrow.style.opacity = '0.5'
-      }
-    })
-
-    arrow.addEventListener('animationend', () => {
-      arrow.classList.remove('animate')
-    })
-  }
-
-  addHoverArrowEffect(terminalBtn, leftArrow)
-  addHoverArrowEffect(snakeBtn, rightArrow)
-
-  // S'assurer que les styles sont corrects au chargement initial
-  if (snakeView.classList.contains('is-visible')) {
-    viewportRight.style.cssText = `
-      height: 100vh;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    `
-    viewportRightInner.style.cssText = `
-      height: 100%;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    `
-    contentWrapper.style.cssText = `
-      height: 100%;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    `
-    viewContainer.style.cssText = `
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    `
-    gameInner.style.cssText = `
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      position: relative;
-      overflow: hidden;
-    `
-  }
-}
-
-// Initialiser le toggle au chargement
-initToggleView()
-
-// Appelle la fonction une fois le DOM prêt
-document.addEventListener('DOMContentLoaded', initToggleView)
-
-// Fonction pour s'assurer que tous les éléments .is-terminal-text ont des chevrons
-function ensureTerminalChevrons() {
-  document.querySelectorAll('.is-terminal-text').forEach((element) => {
-    // Récupérer le contenu HTML de chaque élément
-    let htmlContent = element.innerHTML
-
-    // Séparer le texte en lignes, en utilisant <br> comme délimiteur
-    const lines = htmlContent.split('<br>')
-
-    // Nettoyer d'abord toutes les lignes en retirant les chevrons existants
-    const cleanedLines = lines.map((line) => {
-      // Supprimer le chevron s'il existe
-      return line.replace(/&gt;\s*/, '')
-    })
-
-    // Ajouter un chevron au début de chaque ligne
-    const formattedLines = cleanedLines.map((line) => {
-      // Trim les espaces avant et après, mais garde ceux avant le texte
-      const leadingSpaces = line.match(/^\s*/)[0] // récupère les espaces au début
-      const trimmedLine = line.trim() // enlève les espaces avant et après
-
-      // Ajouter le ">" tout en gardant les espaces
-      return `${leadingSpaces}&gt; ${trimmedLine}`
-    })
-
-    // Rejoindre les lignes formatées avec <br> pour créer le texte final
-    element.innerHTML = formattedLines.join('<br>')
-  })
-}
-
-// Appeler la fonction au chargement de la page pour s'assurer que les chevrons sont présents
-document.addEventListener('DOMContentLoaded', ensureTerminalChevrons)
-
-// Scramble text
-function initScrambleOnHover(selector, options = {}) {
-  const {
-    speed = 150,
-    target = null, // Permet de définir une sous-cible, ex: '.label'
-  } = options
-
-  const chars =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>?/[]{}'
-
-  document.querySelectorAll(selector).forEach((el) => {
-    const targetEl = target ? el.querySelector(target) : el
-    if (!targetEl) return
-
-    const finalText = targetEl.textContent
-
-    el.addEventListener('mouseenter', () => {
-      let output = ''
-      let revealed = 0
-
-      const scrambleInterval = setInterval(() => {
-        output = ''
-
-        for (let i = 0; i < finalText.length; i++) {
-          if (i < revealed) {
-            output += finalText[i]
-          } else {
-            output += chars.charAt(Math.floor(Math.random() * chars.length))
-          }
-        }
-
-        targetEl.textContent = output
-
-        if (revealed < finalText.length) {
-          revealed++
-        } else {
-          clearInterval(scrambleInterval)
-          targetEl.textContent = finalText
-        }
-      }, speed)
-    })
-  })
-}
-initScrambleOnHover('[data-scramble]', {
-  target: '.label', // Ne scramblera QUE le contenu texte de .label
-})
-
-//Scramble Data
+// Animation constants
+const commonEasing = 'serpeasing'
+const commonDuration = 1
+
+// Data update functions
 const dataConfig = {
   '.is-rate': {
     type: 'number',
@@ -486,7 +50,7 @@ const dataConfig = {
   },
   '.is-origin': {
     type: 'text',
-    options: ['@serp', '@v0id', '--', '@Ω421', '@Ω314'],
+    options: ['@serp', '@v0id', '--', '@Ω421', '@Ω314'],
   },
   '.is-pulse': {
     type: 'number',
@@ -506,6 +70,53 @@ const dataConfig = {
     max: 82,
     suffix: '% CPU',
   },
+}
+
+// Terminal commands and username
+let storedUsername = generateDefaultUsername()
+const commands = {}
+
+function generateDefaultUsername() {
+  const randomDigits = Math.floor(10000 + Math.random() * 90000)
+  return `anon${randomDigits}`
+}
+
+function updateWelcomeText() {
+  const welcomeElement = document.querySelector('.welcome')
+  if (welcomeElement) {
+    welcomeElement.textContent = `Welcome, ${storedUsername} !`
+  }
+}
+
+// Initialize commands from DOM
+function initCommands() {
+  const commandElements = document.querySelectorAll('.commands_item')
+  commandElements.forEach((el) => {
+    const name = el.getAttribute('data-command')
+    const response = el.getAttribute('data-response')
+    if (name && response) {
+      commands[name.toLowerCase()] = response
+    }
+  })
+}
+
+function getRandomValue(config) {
+  if (config.type === 'number') {
+    if (config.range) {
+      const value = Math.random() * (config.max - config.min) + config.min
+      const formattedValue = value.toFixed(config.decimalPlaces || 3)
+      const signedValue = value >= 0 ? `+${formattedValue}` : formattedValue
+      return `${signedValue}${config.suffix || ''}`
+    }
+
+    const value =
+      Math.floor(Math.random() * (config.max - config.min + 1)) + config.min
+    return `${value}${config.suffix || ''}`
+  } else if (config.type === 'text') {
+    return config.options[Math.floor(Math.random() * config.options.length)]
+  }
+
+  return ''
 }
 
 function scrambleText(element, finalText, duration = 500) {
@@ -530,25 +141,6 @@ function scrambleText(element, finalText, duration = 500) {
   }, duration / length)
 }
 
-function getRandomValue(config) {
-  if (config.type === 'number') {
-    if (config.range) {
-      const value = Math.random() * (config.max - config.min) + config.min
-      const formattedValue = value.toFixed(config.decimalPlaces || 3)
-      const signedValue = value >= 0 ? `+${formattedValue}` : formattedValue
-      return `${signedValue}${config.suffix || ''}` // Ajoute le suffixe (ex: Δ) sans espace
-    }
-
-    const value =
-      Math.floor(Math.random() * (config.max - config.min + 1)) + config.min
-    return `${value}${config.suffix || ''}`
-  } else if (config.type === 'text') {
-    return config.options[Math.floor(Math.random() * config.options.length)]
-  }
-
-  return ''
-}
-
 function updateDataWithScramble() {
   Object.entries(dataConfig).forEach(([selector, config]) => {
     const elements = document.querySelectorAll(selector)
@@ -559,98 +151,86 @@ function updateDataWithScramble() {
   })
 }
 
-setInterval(updateDataWithScramble, 4000)
+// Loader animation
+function startLoaderAnimation() {
+  const loader = document.querySelector('.loader')
+  const loaderWrap = document.querySelector('.loader-wrap')
+  const scan = document.querySelector('.scan.is-loader-1')
+  const progressAmount = document.querySelector('.progress-amount')
+  const loaderLogs = document.querySelectorAll('.loader_log')
+  const loaderSections = ['.loader_logos', '.loader_logs', '.loader_progress']
+  const logos = ['.logo-2', '.logo-3', '.logo-4', '.logo-5', '.logo-6']
 
-// CRT
-document.addEventListener('DOMContentLoaded', () => {
-  // Récupérer ou créer le conteneur principal
-  const container = document.getElementById('crt-container')
+  if (!loader) return
 
-  // Créer l'élément .crt
-  const crt = document.createElement('div')
-  crt.classList.add('crt')
+  const totalDuration = 1.5
+  const durationPerLogo = totalDuration / logos.length
+  const durationPerLog = totalDuration / loaderLogs.length
 
-  // Ajouter la div .crt dans le conteneur principal
-  container.appendChild(crt)
+  const timeline = gsap.timeline()
 
-  // Fonction pour créer les lignes
-  function createLines() {
-    // Supprimer toutes les lignes existantes
-    crt.innerHTML = ''
+  timeline.set(
+    loader,
+    {
+      display: 'flex',
+      height: '120svh',
+    },
+    0
+  )
 
-    // Déterminer combien de lignes il faut en fonction de la hauteur du viewport
-    const linesCount = Math.floor(window.innerHeight / 4) // Ajuster 4 selon l'épaisseur des lignes
+  timeline.set(
+    loaderSections,
+    {
+      display: 'block',
+      opacity: 1,
+    },
+    0
+  )
 
-    // Créer et ajouter les lignes .crt-line
-    for (let i = 0; i < linesCount; i++) {
-      const line = document.createElement('div')
-      line.classList.add('crt-line')
-      crt.appendChild(line)
-    }
+  logos.forEach((selector, index) => {
+    timeline.set(selector, { display: 'block' }, index * durationPerLogo)
+  })
+
+  loaderLogs.forEach((log, index) => {
+    timeline.set(log, { display: 'block' }, index * durationPerLog)
+  })
+
+  timeline.to(
+    progressAmount,
+    {
+      innerText: 100,
+      duration: totalDuration,
+      roundProps: 'innerText',
+      onUpdate: function () {
+        const progress = this.targets()[0].innerText
+        this.targets()[0].innerText = `[ ${progress}% ]`
+      },
+      ease: 'none',
+    },
+    0
+  )
+
+  if (scan) {
+    gsap.to(scan, {
+      y: '120svh',
+      duration: 2.2,
+      ease: 'serpeasing',
+    })
   }
 
-  // Appeler la fonction pour créer les lignes au chargement de la page
-  createLines()
+  timeline.to(loaderWrap, {
+    height: 0,
+    duration: 1.8,
+    ease: 'serpeasing',
+    onComplete: () => {
+      document.body.style.overflow = ''
+      if (loader) loader.remove()
+    },
+  })
+}
 
-  // Réinitialiser les lignes à chaque redimensionnement de la fenêtre
-  window.addEventListener('resize', createLines)
-})
-
-// document.addEventListener('DOMContentLoaded', function () {
-//   const scanElement = document.querySelector('.scan')
-
-//   // Définir les positions de départ et d'arrivée
-
-//   // GSAP Scan Animation
-//   function animateScan() {
-//     // Animer la div scan sur 3 secondes, puis attendre 4 secondes avant de recommencer
-//     gsap.fromTo(
-//       scanElement,
-//       { y: '-7.375rem' }, // Position de départ
-//       {
-//         y: () => {
-//           // Calcule la nouvelle position de 'y' en combinant 100vh et 7.375rem
-//           const vh = window.innerHeight // Hauteur de la fenêtre en pixels
-//           const rem = parseFloat(
-//             getComputedStyle(document.documentElement).fontSize
-//           ) // Taille de 1rem en pixels
-//           return vh + 7.375 * rem // Ajoute 100vh + 7.375rem en pixels
-//         }, // Durée de l'animation
-//         duration: 3,
-//         ease: 'linear', // Transition linéaire
-//         repeat: -1, // Répéter indéfiniment
-//         repeatDelay: 14, // Délai de 4 secondes entre chaque itération
-//       }
-//     )
-//   }
-
-//   animateScan()
-// })
-
-//Dropdown
-// Récupérer les éléments
-const dropdownButton = document.querySelector('.dropdown')
-const dropdownInner = document.querySelector('.dropdown-inner')
-const dropdownArrow = document.querySelector('.dropdown_arrow')
-
-// Ajouter un événement de clic au bouton dropdown
-dropdownButton.addEventListener('click', () => {
-  // Vérifier si dropdown-inner est actuellement visible
-  const isVisible = dropdownInner.style.display === 'flex'
-
-  if (isVisible) {
-    // Cacher le dropdown-inner et remettre l'arrow à 0deg
-    dropdownInner.style.display = 'none'
-    dropdownArrow.style.transform = 'rotate(0deg)'
-  } else {
-    // Afficher le dropdown-inner et faire pivoter l'arrow de 180deg
-    dropdownInner.style.display = 'flex'
-    dropdownArrow.style.transform = 'rotate(180deg)'
-  }
-})
-
-// Game
-document.addEventListener('DOMContentLoaded', () => {
+// Game initialization
+function initGame() {
   const gameContainer = document.querySelector('.game_inner')
   const lostScreen = document.querySelector('.game_lost')
   const restartBtn = document.getElementById('restart')
@@ -676,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function draw() {
     cells.forEach((cell) => {
       cell.className = 'cell'
-      cell.innerHTML = '' // Réinitialiser le contenu
+      cell.innerHTML = ''
     })
 
     snake.forEach((i) => cells[i].classList.add('snake'))
@@ -765,7 +345,546 @@ document.addEventListener('DOMContentLoaded', () => {
   })
 
   startGame()
-})
+}
+
+// Animation functions
+function textOff(container) {
+  const manifestoText = container.querySelector('.is-manifesto-text')
+  const chevrons = container.querySelector('.chevrons')
+  if (manifestoText) {
+    gsap.to(manifestoText, {
+      opacity: 0,
+      duration: 0.4,
+      ease: 'power2.inOut',
+    })
+  }
+  if (chevrons) {
+    gsap.to(chevrons, {
+      opacity: 0,
+      duration: 0.4,
+      ease: 'power2.inOut',
+    })
+  }
+}
+
+function textOn(container) {
+  const manifestoText = container.querySelector('.is-manifesto-text')
+  const chevrons = container.querySelector('.chevrons')
+
+  const blinkTl = gsap.timeline()
+
+  if (manifestoText) {
+    blinkTl
+      .set(manifestoText, { opacity: 0 })
+      .to(manifestoText, {
+        opacity: 1,
+        duration: 0.2,
+        ease: 'none',
+      })
+      .to(manifestoText, {
+        opacity: 0,
+        duration: 0.2,
+        ease: 'none',
+      })
+      .to(manifestoText, {
+        opacity: 1,
+        duration: 0.2,
+        ease: 'none',
+      })
+  }
+
+  if (chevrons) {
+    blinkTl
+      .set(chevrons, { opacity: 0 }, 0)
+      .to(
+        chevrons,
+        {
+          opacity: 1,
+          duration: 0.2,
+          ease: 'none',
+        },
+        0
+      )
+      .to(
+        chevrons,
+        {
+          opacity: 0,
+          duration: 0.2,
+          ease: 'none',
+        },
+        '>'
+      )
+      .to(
+        chevrons,
+        {
+          opacity: 1,
+          duration: 0.2,
+          ease: 'none',
+        },
+        '>'
+      )
+  }
+}
+
+function quitHome() {
+  const viewportRight = document.querySelector('.viewport_right')
+  const viewportLeft = document.querySelector('.viewport_left')
+  const toggleButtons = document.querySelectorAll(
+    '.toggle_button:not(.is-active)'
+  )
+  const activeButton = document.querySelector('.toggle_button.is-active')
+  const arrows = document.querySelectorAll('.toggle_arrow')
+
+  // Sur mobile/tablette, juste cacher viewportLeft sans animation
+  if (window.innerWidth < 992) {
+    viewportLeft.style.display = 'none'
+    return Promise.resolve()
+  }
+
+  // Timeline pour synchroniser les animations
+  const tl = gsap.timeline()
+
+  // Animer les boutons de toggle inactifs et les flèches
+  tl.to(toggleButtons, {
+    flex: '0 1 0%',
+    opacity: 0,
+    duration: 0.6,
+    ease: 'power2.inOut',
+  })
+    .to(
+      arrows,
+      {
+        opacity: 0,
+        duration: 0.3,
+        onComplete: () => {
+          toggleButtons.forEach((btn) => (btn.style.display = 'none'))
+          arrows.forEach((arrow) => (arrow.style.display = 'none'))
+        },
+      },
+      '<'
+    )
+    // Animer le bouton actif
+    .to(
+      activeButton,
+      {
+        flex: '1 1 100%',
+        duration: 0.8,
+        ease: 'power2.inOut',
+      },
+      '<'
+    )
+
+  // Animer viewport_right
+  tl.to(
+    viewportRight,
+    {
+      width: '100vw',
+      duration: commonDuration,
+      ease: commonEasing,
+      onComplete: function () {
+        viewportLeft.style.display = 'none'
+      },
+    },
+    0
+  )
+
+  return tl
+}
+
+function enterHome() {
+  const viewportRight = document.querySelector('.viewport_right')
+  const viewportLeft = document.querySelector('.viewport_left')
+  const toggleButtons = document.querySelectorAll('.toggle_button')
+  const arrows = document.querySelectorAll('.toggle_arrow')
+
+  viewportLeft.style.display = 'flex'
+
+  // Sur mobile/tablette, ne rien faire
+  if (window.innerWidth < 992) {
+    return Promise.resolve()
+  }
+
+  // Timeline pour synchroniser les animations
+  const tl = gsap.timeline()
+
+  // Restaurer l'affichage des boutons et des flèches
+  toggleButtons.forEach((btn) => {
+    btn.style.display = ''
+    btn.style.flex = ''
+  })
+  arrows.forEach((arrow) => {
+    arrow.style.display = ''
+    arrow.style.opacity = ''
+  })
+
+  // Animer les boutons de toggle
+  tl.to(toggleButtons, {
+    flex: '1 1 50%',
+    opacity: 1,
+    duration: 0.6,
+    ease: 'power2.inOut',
+  }).to(
+    arrows,
+    {
+      opacity: 1,
+      duration: 0.3,
+    },
+    '<'
+  )
+
+  // S'assurer que la largeur initiale est bien définie
+  tl.set(viewportRight, { width: '100vw' }, 0).to(
+    viewportRight,
+    {
+      width: window.innerWidth >= 1440 ? '60vw' : '70vw',
+      duration: commonDuration,
+      ease: commonEasing,
+    },
+    0
+  )
+
+  return tl
+}
+
+// One-time initialization
+function initializeOnce() {
+  // Start data update interval
+  setInterval(updateDataWithScramble, 4000)
+
+  // Initialize game
+  const gameContainer = document.querySelector('.game_inner')
+  if (gameContainer) {
+    initGame()
+  }
+
+  // Initialize loader
+  startLoaderAnimation()
+}
+
+// Initialize page content
+function initPageContent() {
+  // Initialize commands
+  initCommands()
+  updateWelcomeText()
+
+  // Get DOM elements
+  const input = document.querySelector('.input')
+  const terminal = document.querySelector('.terminal_inner')
+  const sendButton = document.querySelector('.button')
+
+  // Initialize terminal commands if elements exist
+  if (input && terminal && sendButton) {
+    // Handle keyboard input
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        const command = input.value.trim().toLowerCase()
+        if (command) {
+          processCommand(command, terminal)
+          input.value = ''
+        }
+      }
+    })
+
+    // Handle button click
+    sendButton.addEventListener('click', function () {
+      const command = input.value.trim().toLowerCase()
+      if (command) {
+        processCommand(command, terminal)
+        input.value = ''
+      }
+    })
+  }
+
+  // Initialize other features
+  ensureTerminalChevrons()
+  initScrambleOnHover('[data-scramble]', { target: '.label' })
+  moveHomeDependingOnScreen()
+  initToggleView()
+}
+
+// Process terminal commands
+function processCommand(command, terminal) {
+  const typed = document.createElement('span')
+  typed.classList.add('is-answer')
+  typed.innerHTML = `&gt; ${command}`
+  terminal.appendChild(typed)
+
+  // Détection et stockage du nom personnalisé
+  if (command.toLowerCase().startsWith('user ')) {
+    const name = command.slice(5).trim()
+    if (name) {
+      storedUsername = name
+      const output = document.createElement('span')
+      output.classList.add('is-answer')
+      output.innerHTML = `&gt; Welcome, ${storedUsername} !`
+      terminal.appendChild(output)
+      terminal.scrollTop = terminal.scrollHeight
+      ensureTerminalChevrons()
+    } else {
+      const output = document.createElement('span')
+      output.classList.add('is-answer')
+      output.innerHTML = `&gt; Veuillez entrer un nom après "user"`
+      terminal.appendChild(output)
+      terminal.scrollTop = terminal.scrollHeight
+      ensureTerminalChevrons()
+    }
+    return
+  }
+
+  // Traitement des commandes standards avec injection de username
+  const responseText = commands[command]
+
+  if (responseText) {
+    const lines = responseText.split('\n')
+    let completedLines = 0
+
+    lines.forEach((line, index) => {
+      setTimeout(() => {
+        const outputLine = document.createElement('span')
+        outputLine.classList.add('is-answer')
+
+        // Remplacement de [username] dans chaque ligne
+        const replacedLine = line.replace(/\[name\]/gi, storedUsername)
+
+        outputLine.innerHTML = `&gt; ${replacedLine}`
+        terminal.appendChild(outputLine)
+        terminal.scrollTop = terminal.scrollHeight
+
+        completedLines++
+        if (completedLines === lines.length) {
+          ensureTerminalChevrons()
+        }
+      }, index * 100)
+    })
+  } else {
+    setTimeout(() => {
+      const output = document.createElement('span')
+      output.classList.add('is-answer')
+      output.innerHTML = `&gt; Command not found: "${command}"`
+      terminal.appendChild(output)
+      terminal.scrollTop = terminal.scrollHeight
+      ensureTerminalChevrons()
+    }, 100)
+  }
+}
+
+// Toggle
+function initToggleView() {
+  const terminalBtn = document.getElementById('manifesto')
+  const snakeBtn = document.getElementById('game')
+  const terminalView = document.getElementById('manifesto-view')
+  const snakeView = document.getElementById('game-view')
+  const leftArrow = document.getElementById('left-arrow')
+  const rightArrow = document.getElementById('right-arrow')
+  const viewportRight = document.querySelector('.viewport_right')
+  const viewportRightInner = document.querySelector('.viewport_right-inner')
+  const contentWrapper = document.querySelector('.content-wrapper')
+  const viewContainer = document.querySelector('.view-container')
+  const gameInner = document.querySelector('.game_inner')
+
+  // Vérifie si tous les éléments nécessaires sont présents
+  if (
+    !terminalBtn ||
+    !snakeBtn ||
+    !terminalView ||
+    !snakeView ||
+    !leftArrow ||
+    !rightArrow ||
+    !viewportRight ||
+    !viewportRightInner ||
+    !contentWrapper ||
+    !viewContainer ||
+    !gameInner
+  ) {
+    return
+  }
+
+  function toggleView(showTerminal) {
+    terminalView.classList.toggle('is-visible', showTerminal)
+    snakeView.classList.toggle('is-visible', !showTerminal)
+
+    terminalBtn.classList.toggle('is-active', showTerminal)
+    snakeBtn.classList.toggle('is-active', !showTerminal)
+
+    leftArrow.classList.toggle('is-active', showTerminal)
+    rightArrow.classList.toggle('is-active', !showTerminal)
+
+    leftArrow.style.opacity = showTerminal ? '1' : '0.5'
+    rightArrow.style.opacity = showTerminal ? '0.5' : '1'
+
+    // Ajuster les styles pour le mode jeu
+    if (showTerminal) {
+      // Retour aux valeurs CSS par défaut
+      viewportRight.style.cssText = ''
+      viewportRightInner.style.cssText = ''
+      contentWrapper.style.cssText = ''
+      viewContainer.style.cssText = ''
+      gameInner.style.cssText = ''
+
+      // Mettre à jour les chevrons quand on revient au manifesto
+      setTimeout(() => {
+        ensureTerminalChevrons()
+      }, 0)
+    } else {
+      // Configuration pour le jeu avec une gestion stricte des hauteurs
+      viewportRight.style.cssText = `
+        height: 100vh;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      `
+      viewportRightInner.style.cssText = `
+        height: 100%;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      `
+      contentWrapper.style.cssText = `
+        height: 100%;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      `
+      viewContainer.style.cssText = `
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      `
+      gameInner.style.cssText = `
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        position: relative;
+        overflow: hidden;
+      `
+    }
+  }
+
+  terminalBtn.addEventListener('click', () => {
+    toggleView(true)
+  })
+
+  snakeBtn.addEventListener('click', () => {
+    toggleView(false)
+  })
+
+  function addHoverArrowEffect(btn, arrow) {
+    btn.addEventListener('mouseenter', () => {
+      if (!btn.classList.contains('is-active')) {
+        arrow.style.opacity = '1'
+        arrow.classList.remove('animate')
+        void arrow.offsetWidth
+        arrow.classList.add('animate')
+      }
+    })
+
+    btn.addEventListener('mouseleave', () => {
+      if (!btn.classList.contains('is-active')) {
+        arrow.style.opacity = '0.5'
+      }
+    })
+
+    arrow.addEventListener('animationend', () => {
+      arrow.classList.remove('animate')
+    })
+  }
+
+  addHoverArrowEffect(terminalBtn, leftArrow)
+  addHoverArrowEffect(snakeBtn, rightArrow)
+
+  // S'assurer que les styles sont corrects au chargement initial
+  if (snakeView.classList.contains('is-visible')) {
+    viewportRight.style.cssText = `
+      height: 100vh;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `
+    viewportRightInner.style.cssText = `
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `
+    contentWrapper.style.cssText = `
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `
+    viewContainer.style.cssText = `
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `
+    gameInner.style.cssText = `
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    `
+  } else {
+    // S'assurer que les chevrons sont présents au chargement initial du manifesto
+    setTimeout(() => {
+      ensureTerminalChevrons()
+    }, 0)
+  }
+}
+
+// Scramble text
+function initScrambleOnHover(selector, options = {}) {
+  const {
+    speed = 150,
+    target = null, // Permet de définir une sous-cible, ex: '.label'
+  } = options
+
+  const chars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>?/[]{}'
+
+  document.querySelectorAll(selector).forEach((el) => {
+    const targetEl = target ? el.querySelector(target) : el
+    if (!targetEl) return
+
+    const finalText = targetEl.textContent
+
+    el.addEventListener('mouseenter', () => {
+      let output = ''
+      let revealed = 0
+
+      const scrambleInterval = setInterval(() => {
+        output = ''
+
+        for (let i = 0; i < finalText.length; i++) {
+          if (i < revealed) {
+            output += finalText[i]
+          } else {
+            output += chars.charAt(Math.floor(Math.random() * chars.length))
+          }
+        }
+
+        targetEl.textContent = output
+
+        if (revealed < finalText.length) {
+          revealed++
+        } else {
+          clearInterval(scrambleInterval)
+          targetEl.textContent = finalText
+        }
+      }, speed)
+    })
+  })
+}
 
 function moveHomeDependingOnScreen() {
   const home = document.querySelector('.home')
@@ -797,204 +916,240 @@ function moveHomeDependingOnScreen() {
   mobileMediaQuery.addEventListener('change', handleScreenChange)
 }
 
-window.addEventListener('DOMContentLoaded', moveHomeDependingOnScreen)
-
-// Loader
-function startLoaderAnimation() {
-  // Sélections DOM
-  const loader = document.querySelector('.loader')
-  const loaderWrap = document.querySelector('.loader-wrap')
-  const scan = document.querySelector('.scan.is-loader-1')
-  const progressAmount = document.querySelector('.progress-amount')
-  const loaderLogs = document.querySelectorAll('.loader_log')
-  const loaderSections = ['.loader_logos', '.loader_logs', '.loader_progress']
-  const logos = ['.logo-2', '.logo-3', '.logo-4', '.logo-5', '.logo-6']
-
-  // Config
-  const totalDuration = 1.5
-  const durationPerLogo = totalDuration / logos.length
-  const durationPerLog = totalDuration / loaderLogs.length
-
-  const timeline = gsap.timeline()
-
-  // document.body.style.overflow = 'hidden'
-
-  // Affiche .loader en flex au début
-  timeline.set(
-    loader,
+// Initialize Barba
+barba.init({
+  preventRunning: true,
+  transitions: [
     {
-      display: 'flex',
-      height: '120svh',
-    },
-    0
-  )
-
-  // Affiche les sections internes
-  timeline.set(
-    loaderSections,
-    {
-      display: 'block',
-      opacity: 1,
-    },
-    0
-  )
-
-  // Logos apparaissent un par un
-  logos.forEach((selector, index) => {
-    timeline.set(selector, { display: 'block' }, index * durationPerLogo)
-  })
-
-  // Logs apparaissent un par un
-  loaderLogs.forEach((log, index) => {
-    timeline.set(log, { display: 'block' }, index * durationPerLog)
-  })
-
-  // Progression du texte de 0% à 100%
-  timeline.to(
-    progressAmount,
-    {
-      innerText: 100,
-      duration: totalDuration,
-      roundProps: 'innerText',
-      onUpdate: function () {
-        const progress = this.targets()[0].innerText
-        this.targets()[0].innerText = `[ ${progress}% ]`
+      name: 'default-transition',
+      before: () => {
+        document.documentElement.style.overflow = 'hidden'
+        document.body.style.overflow = 'hidden'
       },
-      ease: 'none',
-    },
-    0
-  )
+      beforeLeave: ({ current }) => {
+        return new Promise((resolve) => {
+          textOff(current.container)
+          // Attendre que le fade out soit terminé
+          gsap.delayedCall(0.4, resolve)
+        })
+      },
+      leave: (data) => {
+        if (data.current.namespace === 'home') {
+          return quitHome()
+        }
+        return Promise.resolve()
+      },
+      beforeEnter: () => {
+        // S'assurer que le texte est invisible au début
+        const manifestoText = document.querySelector('.is-manifesto-text')
+        const chevrons = document.querySelector('.chevrons')
 
-  // Animation du scan DÉCOUPLÉE
-  gsap.to(scan, {
-    y: '120svh',
-    duration: 2.2,
-    ease: 'serpeasing',
+        if (manifestoText) {
+          manifestoText.style.opacity = '0'
+        }
+        if (chevrons) {
+          chevrons.style.opacity = '0'
+        }
+      },
+      enter: async ({ next, current }) => {
+        if (next.namespace === 'home') {
+          const tl = enterHome()
+          return new Promise((resolve) => {
+            tl.eventCallback('onComplete', () => {
+              // Attendre un peu que le nouveau contenu soit chargé
+              gsap.delayedCall(0.1, () => {
+                const nextLabel = next.container.querySelector(
+                  '#manifesto > .label'
+                )
+                const currentLabel = current.container.querySelector(
+                  '#manifesto > .label'
+                )
+                if (nextLabel && currentLabel) {
+                  scrambleText(nextLabel, nextLabel.textContent)
+                }
+                textOn(next.container)
+                resolve()
+              })
+            })
+          })
+        }
+        return Promise.resolve()
+      },
+      after: ({ next, current }) => {
+        initPageContent()
+        document.documentElement.style.overflow = ''
+        document.body.style.overflow = ''
+        // Ne plus appeler textOn ici car il est géré dans enter pour la home
+        if (next.namespace !== 'home') {
+          textOn(next.container)
+          // Mettre à jour le label avec scramble
+          const nextLabel = next.container.querySelector('#manifesto > .label')
+          const currentLabel = current.container.querySelector(
+            '#manifesto > .label'
+          )
+          if (nextLabel && currentLabel) {
+            scrambleText(nextLabel, nextLabel.textContent)
+          }
+        }
+      },
+    },
+  ],
+  views: [
+    {
+      namespace: 'home',
+      beforeEnter() {
+        const viewportRight = document.querySelector('.viewport_right')
+        if (viewportRight && window.innerWidth >= 992) {
+          viewportRight.style.width =
+            window.innerWidth >= 1440 ? '60vw' : '70vw'
+        }
+      },
+    },
+  ],
+})
+
+// Ajouter un style global pour éviter les débordements pendant les transitions
+const style = document.createElement('style')
+style.textContent = `
+  [data-barba="container"] {
+    overflow: hidden;
+  }
+`
+document.head.appendChild(style)
+
+// Initial setup
+initializeOnce()
+
+// Handle direct URL access
+document.addEventListener('DOMContentLoaded', () => {
+  const namespace = document.querySelector('[data-barba="container"]')?.dataset
+    .barbaNamespace
+
+  if (namespace === 'home') {
+    const viewportRight = document.querySelector('.viewport_right')
+    // Ne pas forcer la largeur sur mobile/tablette (< 992px)
+    if (viewportRight && window.innerWidth >= 992) {
+      viewportRight.style.width = window.innerWidth >= 1440 ? '60vw' : '70vw'
+    }
+  }
+
+  initPageContent()
+})
+
+let globalUpdateChevrons // Variable pour stocker la fonction updateChevrons
+
+document.addEventListener('DOMContentLoaded', function () {
+  function getRealLineCount(element) {
+    const clone = element.cloneNode(true)
+    const style = window.getComputedStyle(element)
+
+    // Récupérer la valeur réelle de la variable CSS pour la taille de la police
+    const fontSize = style.getPropertyValue('font-size')
+    const lineHeight = style.getPropertyValue('line-height')
+
+    // Appliquer les styles nécessaires pour la mesure
+    clone.style.position = 'absolute'
+    clone.style.visibility = 'hidden'
+    clone.style.height = 'auto'
+    clone.style.width = style.width
+    clone.style.whiteSpace = 'normal'
+    clone.style.padding = style.padding
+    clone.style.font = style.font
+    clone.style.letterSpacing = style.letterSpacing
+    clone.style.wordSpacing = style.wordSpacing
+    clone.style.lineHeight = lineHeight
+    clone.style.maxWidth = style.maxWidth
+    clone.style.fontSize = fontSize
+
+    // Placer temporairement le clone dans le body pour mesurer
+    document.body.appendChild(clone)
+
+    // Calcul du nombre de lignes
+    const totalHeight = clone.getBoundingClientRect().height
+    const lineHeightNumeric = parseFloat(lineHeight)
+    const lineCount = Math.round(totalHeight / lineHeightNumeric)
+
+    // Nettoyer le clone
+    document.body.removeChild(clone)
+
+    return lineCount
+  }
+
+  function updateChevrons() {
+    const targetElement = document.querySelector('#target')
+    const chevronsContainer = document.querySelector('.chevrons')
+
+    if (!targetElement || !chevronsContainer) return
+
+    const lineCount = getRealLineCount(targetElement)
+
+    chevronsContainer.innerHTML = ''
+
+    // Ajouter les chevrons en fonction du nombre de lignes
+    for (let i = 0; i < lineCount; i++) {
+      const chevronSpan = document.createElement('span')
+      chevronSpan.classList.add('chevron')
+      chevronSpan.innerHTML = '&gt;'
+      chevronsContainer.appendChild(chevronSpan)
+    }
+  }
+
+  // Stocker la référence globalement
+  globalUpdateChevrons = updateChevrons
+
+  // Mettre à jour les chevrons au chargement initial
+  updateChevrons()
+
+  // Observer les changements de taille du terminal
+  const resizeObserver = new ResizeObserver(() => {
+    updateChevrons()
   })
 
-  // Réduction du loader
-  timeline.to(loaderWrap, {
-    height: 0,
-    duration: 1.8,
-    ease: 'serpeasing',
-    onComplete: () => {
-      document.body.style.overflow = ''
-      if (loader) loader.remove()
-    },
+  const terminalElement = document.querySelector('.terminal_inner')
+  if (terminalElement) {
+    resizeObserver.observe(terminalElement)
+  }
+})
+
+// Fonction pour les chevrons du terminal
+function ensureTerminalChevrons() {
+  document.querySelectorAll('.is-terminal-text').forEach((element) => {
+    let htmlContent = element.innerHTML
+    const lines = htmlContent.split('<br>')
+
+    const cleanedLines = lines.map((line) => {
+      return line.replace(/&gt;\s*/, '')
+    })
+
+    const formattedLines = cleanedLines.map((line) => {
+      const leadingSpaces = line.match(/^\s*/)[0]
+      const trimmedLine = line.trim()
+      return `${leadingSpaces}&gt; ${trimmedLine}`
+    })
+
+    element.innerHTML = formattedLines.join('<br>')
   })
+
+  // Mettre à jour aussi les chevrons dynamiques si la fonction existe
+  if (typeof globalUpdateChevrons === 'function') {
+    globalUpdateChevrons()
+  }
 }
 
-startLoaderAnimation()
-
-// Create green square
-document.addEventListener('DOMContentLoaded', () => {
-  const greenSquare = document.createElement('div')
-  greenSquare.style.position = 'fixed'
-  greenSquare.style.width = '150px'
-  greenSquare.style.height = '40px'
-  greenSquare.style.backgroundColor = 'var(--base-colors--serp-red)'
-  greenSquare.style.zIndex = '999'
-  greenSquare.style.top = '0'
-  greenSquare.style.cursor = 'pointer'
-  greenSquare.style.display = 'flex'
-  greenSquare.style.justifyContent = 'center'
-  greenSquare.style.alignItems = 'center'
-  greenSquare.style.color = 'var(--base-colors--black)'
-  greenSquare.style.fontFamily = 'var(--font--main)'
-  greenSquare.style.fontSize = 'var(--text--s)'
-  greenSquare.style.textTransform = 'uppercase'
-  greenSquare.style.fontWeight = '500'
-  greenSquare.textContent = 'page transition'
-  document.body.appendChild(greenSquare)
-
-  // Sélection des éléments nécessaires
-  const viewportLeft = document.querySelector('.viewport_left')
-  const viewportRight = document.querySelector('.viewport_right')
-  let isExpanded = false
-
-  // Fonction pour déterminer si on est en mode mobile/tablette
-  function isMobileOrTablet() {
-    return window.matchMedia('(max-width: 991px)').matches
-  }
-
-  // Fonction pour obtenir la largeur de base selon la taille d'écran
-  function getBaseWidth() {
-    return window.matchMedia('(min-width: 1440px)').matches ? '60vw' : '70vw'
-  }
-
-  // Fonction pour mettre à jour la largeur en fonction de l'état
-  function updateWidth() {
-    if (isMobileOrTablet()) {
-      viewportRight.style.width = '100%'
-      viewportLeft.style.display = isExpanded ? 'none' : ''
-    } else {
-      if (isExpanded) {
-        viewportRight.style.width = '100vw'
-        viewportLeft.style.display = 'none'
+// Resize handler
+window.addEventListener('resize', () => {
+  const namespace = document.querySelector('[data-barba="container"]')?.dataset
+    .barbaNamespace
+  if (namespace === 'home') {
+    const viewportRight = document.querySelector('.viewport_right')
+    if (viewportRight) {
+      // Ne pas forcer la largeur sur mobile/tablette (< 992px)
+      if (window.innerWidth >= 992) {
+        viewportRight.style.width = window.innerWidth >= 1440 ? '60vw' : '70vw'
       } else {
-        viewportRight.style.width = getBaseWidth()
-        viewportLeft.style.display = ''
+        // Retirer le style inline pour laisser le CSS gérer
+        viewportRight.style.removeProperty('width')
       }
     }
   }
-
-  // Écouteur pour le redimensionnement
-  window.addEventListener('resize', updateWidth)
-
-  // Animation uniquement sur viewportRight, avec timing précis pour viewportLeft
-  greenSquare.addEventListener('click', () => {
-    const commonEasing = 'power2.inOut'
-    const duration = 0.7
-
-    if (!isExpanded) {
-      // Si on est sur mobile/tablette, on ne fait pas l'animation
-      if (isMobileOrTablet()) {
-        viewportLeft.style.display = 'none'
-        viewportRight.style.width = '100%'
-        isExpanded = !isExpanded
-        return
-      }
-
-      // Animation de viewport_right vers 100vw
-      gsap.to(viewportRight, {
-        width: '100vw',
-        duration: duration,
-        ease: commonEasing,
-        onComplete: function () {
-          viewportLeft.style.display = 'none'
-        },
-      })
-    } else {
-      // Si on est sur mobile/tablette, on restaure simplement l'affichage
-      if (isMobileOrTablet()) {
-        viewportLeft.style.display = ''
-        viewportRight.style.width = '100%'
-        isExpanded = !isExpanded
-        return
-      }
-
-      // Réafficher viewport_left avant l'animation
-      viewportLeft.style.display = ''
-
-      // Animation de viewport_right vers sa taille initiale
-      gsap.to(viewportRight, {
-        width: getBaseWidth(),
-        duration: duration,
-        ease: commonEasing,
-        onComplete: function () {
-          // Mettre à jour les chevrons
-          ensureTerminalChevrons()
-          if (globalUpdateChevrons) {
-            globalUpdateChevrons()
-          }
-        },
-      })
-    }
-
-    isExpanded = !isExpanded
-  })
-
-  // Supprimer tout CSS superflu
-  const oldStyles = document.querySelectorAll('style[data-page-transition]')
-  oldStyles.forEach((style) => style.remove())
 })
