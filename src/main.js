@@ -344,6 +344,8 @@ function initGame() {
     startGame()
   })
 
+  console.log('game start')
+
   startGame()
 }
 
